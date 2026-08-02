@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+grader_config.json
+service-account*.json
+firebase-adminsdk*.json
+*.pem
+*.key
+__pycache__/
+*.pyc

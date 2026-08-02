@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scratch 作業 自評闖關站</title>
+<style>
+  :root{
+    --bg1:#6a8dff; --bg2:#9b6bff; --card:#fff; --ink:#2c3e50; --muted:#7f8c8d;
+    --ok:#2ecc71; --warn:#f39c12; --err:#e74c3c; --gold:#ffcb2d; --line:#eceff4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:20px;min-height:100vh;color:var(--ink);
+       font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.6;
+       background:linear-gradient(135deg,var(--bg1),var(--bg2)) fixed}
+  .wrap{max-width:640px;margin:0 auto}
+  .hero{text-align:center;color:#fff;margin-bottom:18px}
+  .hero h1{font-size:1.6rem;margin:0 0 4px}
+  .hero p{margin:0;opacity:.9;font-size:.9rem}
+  .card{background:var(--card);border-radius:18px;padding:22px;margin-bottom:16px;
+        box-shadow:0 8px 24px rgba(0,0,0,.14)}
+  .quest{background:#f0f4ff;border:2px dashed #b9c8ff;border-radius:14px;padding:14px 16px;font-size:.88rem}
+  .quest h3{margin:0 0 6px;font-size:.95rem;color:var(--bg2)}
+  label{display:block;font-size:.82rem;font-weight:700;margin:12px 0 5px}
+  input[type=text]{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:.9rem}
+  .drop{border:3px dashed #c3ccff;border-radius:16px;padding:26px 16px;text-align:center;
+        cursor:pointer;transition:.15s;background:#fafbff}
+  .drop:hover,.drop.drag{border-color:var(--bg1);background:#eef2ff}
+  .drop .big{font-size:2.4rem}
+  .drop .fn{font-weight:700;color:var(--bg2);margin-top:6px;word-break:break-all}
+  button{cursor:pointer;border:none;border-radius:12px;padding:13px 18px;font-size:1rem;
+         font-weight:800;font-family:inherit;width:100%;color:#fff;
+         background:linear-gradient(135deg,var(--bg1),var(--bg2));transition:.15s}
+  button:hover{filter:brightness(1.06)} button:disabled{opacity:.5;cursor:not-allowed}
+  .status{text-align:center;font-size:.85rem;margin-top:10px;min-height:1.2em}
+  .status.err{color:var(--err)} .status.busy{color:var(--warn)}
+  .light{display:inline-flex;align-items:center;gap:8px;font-size:.85rem;font-weight:700;
+         justify-content:center;width:100%;margin-bottom:12px;color:var(--muted)}
+  .dot{width:13px;height:13px;border-radius:50%;background:#c9cfda;transition:.2s}
+  .dot.on{background:var(--ok);box-shadow:0 0 9px var(--ok)}
+  .dot.off{background:var(--err);box-shadow:0 0 9px var(--err)}
+  .dot.wait{background:var(--warn);box-shadow:0 0 9px var(--warn)}
+  /* 結果 */
+  .result{display:none}
+  .scorebox{text-align:center;margin-bottom:14px}
+  .scorenum{font-size:3.2rem;font-weight:900;line-height:1}
+  .stars{font-size:1.5rem;letter-spacing:4px;margin-top:6px}
+  .bar{height:14px;border-radius:10px;background:#eef0f4;overflow:hidden;margin:12px 0}
+  .bar>span{display:block;height:100%;width:0;border-radius:10px;transition:width 1s ease}
+  .sec{border-left:4px solid var(--bg1);background:#f7f9ff;border-radius:0 10px 10px 0;
+       padding:10px 14px;margin:10px 0;font-size:.9rem;white-space:pre-wrap}
+  .sec h4{margin:0 0 4px;font-size:.85rem;color:var(--bg2)}
+  .sec.good{border-color:var(--ok);background:#f0fbf4}
+  .sec.bad{border-color:var(--warn);background:#fff8ec}
+  .again{margin-top:10px;background:#eef1f6;color:var(--ink)}
+  .setup{font-size:.8rem;color:var(--muted);text-align:center;margin-top:8px}
+  @media(max-width:480px){body{padding:12px}.card{padding:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>🎮 Scratch 作業自評闖關站</h1>
+    <p>上傳你的 <b>.sb3</b> 作品，AI 助教立刻幫你檢查任務完成度！</p>
+  </div>
+
+  <div class="card">
+    <div class="light"><span class="dot wait" id="dot"></span><span id="connText">偵測連線中…</span></div>
+    <div class="quest">
+      <h3>🏁 本次任務</h3>
+      <div id="themeText">載入中...</div>
+      <div id="rulesText" style="margin-top:8px;color:var(--muted);font-size:.82rem"></div>
+    </div>
+
+    <label>你的學號</label>
+    <input type="text" id="studentId" placeholder="例：71901" inputmode="numeric" autocomplete="off">
+
+    <label>上傳你的作品</label>
+    <div class="drop" id="drop">
+      <div class="big">📦</div>
+      <div>點這裡選擇，或把 .sb3 檔拖進來</div>
+      <div class="fn" id="fileName"></div>
+    </div>
+    <input type="file" id="fileInput" accept=".sb3" style="display:none">
+
+    <button id="gradeBtn" style="margin-top:16px" onclick="grade()" disabled>🚀 開始自評闖關</button>
+    <div class="status" id="status"></div>
+    <div class="setup" id="setupHint"></div>
+  </div>
+
+  <!-- 結果卡 -->
+  <div class="card result" id="resultCard">
+    <div class="scorebox">
+      <div class="scorenum" id="scoreNum">–</div>
+      <div class="stars" id="stars"></div>
+      <div class="bar"><span id="scoreBar"></span></div>
+      <div id="scoreMsg" style="font-weight:700"></div>
+    </div>
+    <div class="sec good" id="secCreative"><h4>💡 創意亮點</h4><div id="creativeText"></div></div>
+    <div class="sec" id="secComment"><h4>📝 助教講評</h4><div id="commentText"></div></div>
+    <div class="sec bad" id="secDeduct"><h4>📉 可以再加強的地方</h4><div id="deductText"></div></div>
+    <button class="again" onclick="reset()">🔄 修改後再測一次</button>
+  </div>
+</div>
+
+<script src="app-config.js"></script>
+<script>
+// API 網址可由 app-config.js、網址 ?api=https://... 或同網域部署時自動提供。
+const SERVER_URL = window.SCRATCH_GRADER_API_URL || new URLSearchParams(location.search).get('api') ||
+  (location.protocol === 'file:' ? '' : location.origin);
+const $ = id => document.getElementById(id);
+const base = () => SERVER_URL;
+const H = {'ngrok-skip-browser-warning':'true'};
+let chosen=null, showScore=true;
+function setLight(state,text){ $('dot').className='dot '+state; $('connText').textContent=text; }
+
+// 拖放與選檔
+const drop=$('drop'), fi=$('fileInput');
+drop.onclick=()=>fi.click();
+fi.onchange=()=>pick(fi.files[0]);
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag');}));
+drop.addEventListener('drop',e=>{ if(e.dataTransfer.files[0]) pick(e.dataTransfer.files[0]); });
+function pick(f){
+  if(!f) return;
+  if(!f.name.toLowerCase().endsWith('.sb3')){ setStatus('請選擇 .sb3 檔案喔！','err'); return; }
+  chosen=f; $('fileName').textContent='✅ '+f.name; $('gradeBtn').disabled=false; setStatus('');
+}
+function setStatus(m,c){ const e=$('status'); e.textContent=m; e.className='status '+(c||''); }
+
+// 載入任務資訊 + 自動偵測連線（紅/綠燈）
+async function loadTask(){
+  setLight('wait','偵測連線中…');
+  try{
+    const r=await fetch(base()+'/api/student/config',{headers:H});
+    const j=await r.json();
+    if(j.ok){
+      const c=j.config; showScore=c.student_show_score!==false;
+      $('themeText').textContent=c.theme||'（老師尚未設定作業主題）';
+      $('rulesText').textContent=c.rules?('評分重點：\n'+c.rules):'';
+      if(!c.has_api_key){
+        $('setupHint').textContent='⚠️ 老師尚未完成設定，暫時無法自評。';
+        setLight('on','🟢 已連線（老師尚未完成設定）');
+      }else{
+        setLight('on','🟢 已連線，可以開始自評');
+      }
+    } else { $('themeText').textContent='無法載入任務資訊'; setLight('off','🔴 伺服器回應異常'); }
+  }catch(e){
+    $('themeText').textContent='⚠️ 連不上伺服器，請稍候再試或問老師。';
+    setLight('off','🔴 未連線（老師的伺服器可能還沒開）');
+  }
+}
+loadTask();
+setInterval(loadTask, 20000);  // 每 20 秒自動重新偵測
+
+async function grade(){
+  if(!chosen) return;
+  const sid=$('studentId').value.trim();
+  if(!sid){ setStatus('請先輸入你的學號！','err'); $('studentId').focus(); return; }
+  $('gradeBtn').disabled=true; setStatus('🧠 AI 助教正在仔細檢查你的積木...','busy');
+  const fd=new FormData(); fd.append('file',chosen); fd.append('student_id',sid);
+  try{
+    const r=await fetch(base()+'/api/student/grade',{method:'POST',headers:H,body:fd});
+    const j=await r.json();
+    if(!j.ok){ setStatus('❌ '+(j.error||'自評失敗'),'err'); $('gradeBtn').disabled=false; return; }
+    render(j.result); setStatus('');
+  }catch(e){ setStatus('❌ '+e.message,'err'); $('gradeBtn').disabled=false; }
+}
+
+function render(d){
+  $('resultCard').style.display='block';
+  const sc = (d.score===null||d.score===undefined)?null:d.score;
+  if(sc===null || !showScore){
+    $('scoreNum').textContent='✓';
+    $('stars').textContent=''; $('scoreBar').style.width='100%';
+    $('scoreBar').style.background='var(--bg1)';
+    $('scoreMsg').textContent='已完成檢查！看看下方助教的回饋吧。';
+  }else{
+    const pct=Math.max(0,Math.min(100,sc));
+    let color=sc>=90?'var(--ok)':sc>=70?'var(--warn)':'var(--err)';
+    $('scoreNum').textContent=sc+' 分'; $('scoreNum').style.color=color;
+    const full=Math.round(pct/20);
+    $('stars').textContent='★'.repeat(full)+'☆'.repeat(5-full);
+    setTimeout(()=>{ $('scoreBar').style.width=pct+'%'; $('scoreBar').style.background=color; },80);
+    $('scoreMsg').textContent = sc>=90?'太厲害了，幾乎完美！🎉':sc>=70?'不錯喔，再補強一下就更棒了！💪':sc>=60?'及格了！還有進步空間，加油！':'再挑戰一次，你可以的！🔥';
+  }
+  fill('secCreative','creativeText',d.creative_highlights);
+  $('commentText').textContent=d.comments||'—';
+  fill('secDeduct','deductText',d.deducted_items);
+  $('resultCard').scrollIntoView({behavior:'smooth'});
+}
+function fill(sec,txt,val){
+  const empty=!val||val==='無';
+  $(sec).style.display=empty?'none':'block';
+  if(!empty) $(txt).textContent=val;
+}
+function reset(){
+  $('resultCard').style.display='none'; $('scoreBar').style.width='0';
+  chosen=null; fi.value=''; $('fileName').textContent=''; $('gradeBtn').disabled=true;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

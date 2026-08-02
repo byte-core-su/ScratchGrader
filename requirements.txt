@@ -1,0 +1,7 @@
+Flask>=3.0,<4
+Flask-Cors>=4.0,<6
+pyngrok>=7.0,<8
+pandas>=2.0,<3
+google-genai>=1.0,<2
+google-auth>=2.0,<3
+python-dotenv>=1.0,<2

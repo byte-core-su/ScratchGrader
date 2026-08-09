@@ -848,6 +848,30 @@ def _fs_load_config():
         raise
 
 
+def config_storage_status():
+    """Return the active configuration storage state for the teacher UI."""
+    if not FIREBASE.get("enabled"):
+        return {
+            "backend": "local",
+            "is_firestore": False,
+            "message": "Firestore 未啟用；設定只保存於目前 Colab 工作階段。",
+        }
+    try:
+        _fs_load_config()
+        return {
+            "backend": "firestore",
+            "is_firestore": True,
+            "message": "Firestore 已連線；儲存後會跨 Colab 重啟保留。",
+        }
+    except Exception as e:
+        print(f"[Firebase] 設定保存位置檢查失敗，改用本機檔案：{e}")
+        return {
+            "backend": "local",
+            "is_firestore": False,
+            "message": "Firestore 目前無法使用；設定只保存於目前 Colab 工作階段。",
+        }
+
+
 def record_submission(student_id, result, theme=""):
     """
     把一筆學生自評結果寫入 Firestore 的 submissions 集合（自動產生文件 ID）。
@@ -909,6 +933,7 @@ DEFAULT_CONFIG = {
     "model_name": "gemini-2.5-flash",
     "theme": "",
     "rules": "",
+    "delay_seconds": 13,
     "is_standard_answer": True,
     "use_custom_extension": False,
     "extension_rules": "",

@@ -29,7 +29,6 @@ Scratch 作業 AI 批改系統 — 後端 API 伺服器（在 Google Colab 執�
 
 import os
 import tempfile
-import traceback
 
 try:
     from dotenv import load_dotenv
@@ -41,12 +40,16 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 import scratch_grader_core as core
+from grading_queue import GradingQueueFull, grading_queue
+from ngrok_recovery import stop_stale_domain_sessions
 
 # ==========================================
 # 1. 執行環境設定（請在 Colab Secrets 或環境變數中設定）
 # ==========================================
 NGROK_AUTHTOKEN = os.getenv("NGROK_AUTHTOKEN", "").strip()
 NGROK_STATIC_DOMAIN = os.getenv("NGROK_STATIC_DOMAIN", "").strip()
+NGROK_API_KEY = os.getenv("NGROK_API_KEY", "").strip()
+NGROK_REMOTE_RECOVERY = os.getenv("NGROK_REMOTE_RECOVERY", "true").strip().lower() in {"1", "true", "yes", "on"}
 PORT = int(os.getenv("PORT", "5000"))
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
 _cors_origins = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",") if origin.strip()]
@@ -92,6 +95,40 @@ def _save_upload_to_temp(file_storage):
     return path
 
 
+def _storage_status_from_save_location(saved_to):
+    """Build a UI-safe storage status from the actual save result."""
+    if str(saved_to).startswith("Firebase Firestore:"):
+        return {
+            "backend": "firestore",
+            "is_firestore": True,
+            "message": "已保存到 Firestore；Colab 重啟後仍會保留。",
+        }
+    return {
+        "backend": "local",
+        "is_firestore": False,
+        "message": "未保存到 Firestore；目前只保存於這個 Colab 工作階段。",
+    }
+
+
+def _run_grading_job(path, config):
+    """Queue CPU/API-heavy grading so a class cannot overwhelm one Colab runtime."""
+    return grading_queue.submit(
+        lambda: core.grade_project_file(path, config),
+        start_cooldown_seconds=config.get("delay_seconds", 13),
+    )
+
+
+def _recover_stale_ngrok_domain():
+    """以 ngrok API 僅停止目前靜態網域所屬的舊 tunnel session。"""
+    if not NGROK_API_KEY or not NGROK_REMOTE_RECOVERY:
+        return
+    result = stop_stale_domain_sessions(NGROK_STATIC_DOMAIN, NGROK_API_KEY)
+    if result["stopped_session_ids"]:
+        print(f"♻️ 已透過 ngrok API 釋放 {len(result['stopped_session_ids'])} 個舊 tunnel session。")
+    elif result["warning"]:
+        print(f"⚠️ 無法透過 ngrok API 檢查舊 tunnel：{result['warning']}；改用本機清理與重試。")
+
+
 # ==========================================
 # 3. 一般端點
 # ==========================================
@@ -114,6 +151,7 @@ def index():
             "GET  /api/student/config",
             "POST /api/student/grade",
         ],
+        "grading_queue": grading_queue.stats(),
     })
 
 
@@ -131,7 +169,8 @@ def teacher_get_config():
     if guard:
         return guard
     cfg = core.load_config(CONFIG_PATH)
-    return jsonify({"ok": True, "config": cfg})
+    return jsonify({"ok": True, "config": cfg,
+                    "storage": core.config_storage_status()})
 
 
 @app.route("/api/teacher/config", methods=["POST"])
@@ -144,7 +183,8 @@ def teacher_save_config():
     cfg = core.load_config(CONFIG_PATH)
     cfg.update(incoming)
     path = core.save_config(cfg, CONFIG_PATH)
-    return jsonify({"ok": True, "saved_to": path, "updated_at": cfg.get("updated_at")})
+    return jsonify({"ok": True, "saved_to": path, "updated_at": cfg.get("updated_at"),
+                    "storage": _storage_status_from_save_location(path)})
 
 
 # ==========================================
@@ -242,11 +282,15 @@ def teacher_test():
 
     path = _save_upload_to_temp(request.files["file"])
     try:
-        result = core.grade_project_file(path, cfg)
-        return jsonify({"ok": True, "result": result})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e),
-                        "trace": traceback.format_exc()[:800]}), 500
+        result, queue_info = _run_grading_job(path, cfg)
+        return jsonify({"ok": True, "result": result, "queue": queue_info})
+    except GradingQueueFull:
+        return jsonify({"ok": False,
+                        "error": "目前評分排隊已滿，請稍後再試。"}), 503
+    except Exception:
+        app.logger.exception("教師端單檔試評失敗")
+        return jsonify({"ok": False,
+                        "error": "試評失敗，請檢查檔案、模型與 API 設定後再試一次。"}), 500
     finally:
         try:
             os.remove(path)
@@ -278,7 +322,7 @@ def student_grade():
 
     path = _save_upload_to_temp(request.files["file"])
     try:
-        result = core.grade_project_file(path, cfg)
+        result, queue_info = _run_grading_job(path, cfg)
         # 先用「真實分數」記錄到 Firestore（不受學生端顯示設定影響）
         core.record_submission(student_id, result, theme=cfg.get("theme", ""))
         # 依老師設定決定是否對學生顯示分數
@@ -290,10 +334,15 @@ def student_grade():
         return jsonify({"ok": True, "result": result,
                         "student_id": student_id,
                         "theme": cfg.get("theme", ""),
-                        "show_score": cfg.get("student_show_score", True)})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e),
-                        "trace": traceback.format_exc()[:800]}), 500
+                        "show_score": cfg.get("student_show_score", True),
+                        "queue": queue_info})
+    except GradingQueueFull:
+        return jsonify({"ok": False,
+                        "error": "目前評分排隊已滿，請稍後再試。"}), 503
+    except Exception:
+        app.logger.exception("學生端評分失敗")
+        return jsonify({"ok": False,
+                        "error": "評分暫時失敗，請稍後再試；若持續發生請聯絡教師。"}), 500
     finally:
         try:
             os.remove(path)
@@ -322,6 +371,7 @@ def start():
         import time as _t; _t.sleep(2)
     except Exception:
         pass
+    _recover_stale_ngrok_domain()
 
     try:
         public_url = ngrok.connect(PORT, domain=NGROK_STATIC_DOMAIN).public_url
@@ -386,6 +436,7 @@ def serve_background():
         ngrok.kill()
     except Exception:
         pass
+    _recover_stale_ngrok_domain()
     _t.sleep(3)
 
     # 3) 用「目前最新的 app」啟動一台可被關閉的 werkzeug 伺服器；
@@ -412,6 +463,7 @@ def serve_background():
                     ngrok.kill()
                 except Exception:
                     pass
+                _recover_stale_ngrok_domain()
                 _t.sleep(4)
                 continue
             if "ERR_NGROK_334" in msg or "already online" in msg:

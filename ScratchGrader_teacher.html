@@ -68,6 +68,7 @@
       <button class="btn-ghost" onclick="loadConfig()">📥 載入現有設定</button>
     </div>
     <div class="status" id="connStatus"></div>
+    <div class="status" id="storageStatus">ℹ️ 尚未確認資料保存位置</div>
   </div>
 
   <!-- 金鑰與模型 -->
@@ -133,7 +134,7 @@
     <div class="hint">按下後會寫入 Firebase 共用設定（覆蓋同一筆），學生端立即生效。
       下次開啟本頁會自動載入這筆設定，不用重新輸入。</div>
     <div class="btnbar">
-      <button class="btn-primary" onclick="saveConfig()">💾 儲存設定到 Firebase</button>
+      <button class="btn-primary" onclick="saveConfig()">💾 儲存設定</button>
     </div>
     <div class="status" id="saveStatus"></div>
   </div>
@@ -179,6 +180,13 @@ function headers(json, requireAdmin=true){
   return h;
 }
 function setStatus(id,msg,cls){ const e=$(id); e.textContent=msg; e.className='status '+(cls||''); }
+function showStorageStatus(storage){
+  if(!storage){ setStatus('storageStatus','⚠️ 無法確認資料保存位置','busy'); return; }
+  const isFirestore=storage.is_firestore===true;
+  const icon=isFirestore?'☁️':'⚠️';
+  const prefix=isFirestore?'資料已保存到 Firestore：':'資料未保存到 Firestore：';
+  setStatus('storageStatus',icon+' '+prefix+(storage.message||''),isFirestore?'ok':'busy');
+}
 function setLight(state,text){
   $('dot').className = 'dot '+state;   // on / off / wait
   $('connText').textContent = text;
@@ -207,6 +215,7 @@ async function loadConfig(){
     const j = await r.json();
     if(!j.ok){ setStatus('connStatus','❌ '+(j.error||'載入失敗'),'err'); return; }
     const c = j.config;
+    showStorageStatus(j.storage);
     // 只在伺服器確實有值時才回填金鑰，避免用空值蓋掉剛輸入的內容
     if(c.api_key_1) $('apiKey1').value=c.api_key_1;
     if(c.api_key_2) $('apiKey2').value=c.api_key_2;
@@ -280,6 +289,7 @@ async function suggestRules(){
       body:JSON.stringify({api_key_1:k1,api_key_2:k2,model_name:$('modelName').value,clean_code:window._exampleCode})});
     const j=await r.json();
     if(j.ok){
+      showStorageStatus(j.storage);
       $('theme').value=j.theme||''; $('rules').value=j.rules||'';
       setStatus('suggestStatus','✅ 已生成，請檢查/調整③的內容後再按「儲存設定」','ok');
     } else setStatus('suggestStatus','❌ '+(j.error||'生成失敗'),'err');

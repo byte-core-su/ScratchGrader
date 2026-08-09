@@ -1,15 +1,44 @@
 # ScratchGrader
 
-以 Gemini 協助批改 Scratch `.sb3` 作業的教學原型。教師端設定作業主題與評分規則；學生端上傳作業進行自評；後端可選擇將設定與繳交紀錄儲存在 Firestore。
+ScratchGrader 是供 Scratch 教學使用的 AI 輔助批改系統。教師建立作業規則與參考解答後，學生可上傳自己的 `.sb3` 專案進行自評，系統會依教師規則產生分數、邏輯分析與可改進建議。
 
-## 專案現況
+## 系統目的
 
-目前後端設計為在 Google Colab 執行 Flask，再以 ngrok 提供 HTTPS 網址。前端是兩個獨立 HTML：
+它適合在課堂、社團或自學情境中，協助教師快速檢視學生是否完成指定的 Scratch 功能，同時讓學生在繳交前取得具體回饋。系統不取代教師判斷；教師仍可依課程目標調整題目、評分規則與 AI 回饋。
+
+## 核心特色
+
+- 教師可設定作業主題、評分規則、初始範本與參考解答。
+- 學生以瀏覽器上傳 `.sb3`，不需安裝額外軟體。
+- 直接解析 Scratch 專案結構、角色、背景、音效、變數與積木流程，再交由 Gemini 依規則評量。
+- 積木名稱使用 Scratch 官方繁體中文詞彙；未知的第三方擴充會被標示，不讓 AI 任意猜測。
+- 可選擇使用 Firestore 保存教師設定與學生自評紀錄；未啟用時只儲存在目前後端環境。
+- 教師端由 `ADMIN_TOKEN` 保護；公開專案不含任何帳號、金鑰或既有學生資料。
+
+## 操作方式
+
+1. **部署者**：依「第一次設定」與「外部服務設定指南」建立自己的 ngrok、Gemini、`ADMIN_TOKEN`，以及選用的 Firestore 設定。
+2. **教師**：開啟 `ScratchGrader_teacher.html`，輸入教師管理密碼，填入 Gemini API key、作業主題與評分規則；可上傳範本／參考解答 `.sb3`，先做單檔試評，再按「儲存設定」。
+3. **學生**：開啟 `ScratchGrader_student.html`，輸入學號並上傳 `.sb3`，取得分數（若教師開啟）、邏輯分析與改善建議。
+4. **教師追蹤**：啟用 Firestore 時，可在教師頁讀取學生自評紀錄；未啟用時，資料會隨目前的本機或 Colab 工作階段保存。
+
+### 班級同時評分與排隊
+
+學生可以同時開啟與送出學生頁面；後端會以 FIFO（先送先處理）佇列執行 AI 評分，預設同時處理 3 份，其餘等待。此設定讓約 15 位學生同時繳交時，不會同時大量佔用 Colab 與模型免費額度。
+
+- `MAX_CONCURRENT_GRADES=3`：同時進行的 AI 評分數。免費 Colab 建議維持 2～3；效能與額度充足時才提高。
+- `MAX_QUEUED_GRADES=24`：最多可等待的評分數；佇列已滿時，學生會收到稍後再試的訊息。
+- 評分工作仍受模型回應時間與帳號額度影響；此佇列控制併發，不保證固定完成時間。
+
+## 系統架構與檔案
+
+後端在 Google Colab 執行 Flask，再以 ngrok 提供 HTTPS 網址；前端是兩個獨立 HTML：
 
 | 檔案 | 用途 |
 | --- | --- |
 | `scratch_grader_core.py` | `.sb3` 解析、Gemini 評分、設定與 Firestore 存取 |
 | `colab_server.py` | Flask API、教師端驗證、ngrok 連線 |
+| `grading_queue.py` | 限制同時 AI 評分數並依送出順序排隊，保護 Colab 與模型額度 |
 | `ScratchGrader_teacher.html` | 教師設定與試評頁面 |
 | `ScratchGrader_student.html` | 學生自評頁面 |
 | `app-config.js` | 前端唯一需調整的公開 API 網址 |
@@ -67,6 +96,15 @@ service cloud.firestore {
 
 > API key 會依部署方式保存在 Firestore 或目前的後端設定檔。若是共用教學環境，建議為每個班級或測試環境建立獨立 key，以便停用與用量管理。
 
+#### 免費額度優先：建議使用 Gemma
+
+如果帳號提供的 Gemma 免費額度高於 Gemini，建議在教師頁面的模型清單中優先選擇可用的 Gemma 模型。ScratchGrader 的評分內容以文字分析、規準比對與繁中回饋為主，先以 Gemma 維持免費使用是合理的部署策略。
+
+- 請以教師頁面載入的模型清單為準；系統只會列出這把 API key 可用、且支援文字生成的 `gemma`／`gemini` 模型。
+- 請用 10～20 份具代表性的 `.sb3` 作業，確認分數、官方繁中用語與改善建議符合教師規準後，再固定該模型。
+- 若目標是零成本運作，請不要設定「Gemma 失敗時自動改用 Gemini」的備援，避免超出免費額度而產生費用。
+- 模型與免費額度會隨帳號、地區及供應商方案變動；若清單中沒有 Gemma，請改用當下可用的免費模型或調整部署方案。
+
 ### 2. ngrok 公開網址（必要）
 
 1. 註冊並登入 [ngrok Dashboard](https://dashboard.ngrok.com/)。
@@ -80,6 +118,19 @@ NGROK_STATIC_DOMAIN=你的靜態網域
 ```
 
 啟動後，程式會印出 `https://...` API 網址。將該網址填入 `app-config.js`，供教師端與學生端連線。靜態網域本身可以公開；authtoken 不可以。
+
+#### 避免「網域已被 Agent 使用」
+
+若 Colab 非正常中斷，舊 agent 可能還在線並佔用同一靜態網域，導致 `ERR_NGROK_334`。本專案會先清除目前 Colab runtime 的 ngrok 程序；若要連**其他** runtime／裝置的舊 tunnel 一併安全釋放，請在 ngrok Dashboard 建立 API key，並額外設定：
+
+```text
+NGROK_API_KEY=你的_ngrok_API_key
+NGROK_REMOTE_RECOVERY=true
+```
+
+啟動器會透過 ngrok API 列出 active endpoints，僅比對 `NGROK_STATIC_DOMAIN` 完全相符的項目，然後停止其 tunnel session；不會停止帳號下其他網域的 agent。ngrok 的 API key 是管理 API 用途，與 agent 連線所需的 authtoken 不同。[ngrok Agent 設定說明](https://ngrok.com/docs/agent/config/v3) [ERR_NGROK_334 官方說明](https://ngrok.com/docs/errors/err_ngrok_334)
+
+若你正確在另一個 runtime 執行同一個正式服務，請把 `NGROK_REMOTE_RECOVERY=false`，避免新啟動的 Colab 中斷那個服務。
 
 ### 3. Firebase Firestore（選用，但建議用於保留設定與紀錄）
 
@@ -106,11 +157,15 @@ FIREBASE_SERVICE_ACCOUNT_FILE=service-account.json
 | --- | --- | --- |
 | `NGROK_AUTHTOKEN` | 必要 | ngrok 的祕密 authtoken |
 | `NGROK_STATIC_DOMAIN` | 必要 | 你的 ngrok 靜態網域 |
+| `NGROK_API_KEY` | 建議 | 自動釋放同網域舊 tunnel session 的管理 API key |
+| `NGROK_REMOTE_RECOVERY` | 選用 | `true` 時啟用精準的遠端復原，預設為 `true` |
 | `ADMIN_TOKEN` | 必要 | 自行產生的長隨機教師管理密碼 |
 | `FIREBASE_ENABLED` | 選用 | 使用 Firestore 時填 `true` |
 | `FIREBASE_PROJECT_ID` | Firestore 時必要 | Firebase 專案 ID |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Firestore 時必要 | 完整服務帳戶 JSON 內容 |
 | `CORS_ALLOWED_ORIGINS` | 正式網站建議 | 前端網址，例如 `https://example.github.io` |
+| `MAX_CONCURRENT_GRADES` | 選用 | 同時評分數，預設 `3` |
+| `MAX_QUEUED_GRADES` | 選用 | 最多等待中的評分數，預設 `24` |
 
 將 `ScratchGrader_Secure_Colab.ipynb`、`scratch_grader_core.py` 與 `colab_server.py` 上傳到同一個 Colab 工作階段，依序執行 notebook 儲存格。缺少必要 Secret 時，啟動器會直接提示缺少的名稱，不會使用預設祕密值。
 
@@ -187,20 +242,62 @@ ScratchGrader_teacher.html?api=https://your-domain.ngrok-free.app
 copy .env.example .env
 ```
 
-最重要的變數如下：
+每次修改環境變數或 Colab Secret 後，都要重新啟動 Colab 後端；不要把 `.env`、服務帳戶 JSON 或任何 token 上傳到 GitHub。
 
-| 變數 | 必要性 | 說明 |
+### 後端與部署參數
+
+| 參數 | 預設值 | 放置位置／如何調整 | 用途與建議 |
+| --- | --- | --- | --- |
+| `NGROK_AUTHTOKEN` | 無 | `.env` 或 Colab Secret | 必填。ngrok 帳號的 agent 認證，不可公開。 |
+| `NGROK_STATIC_DOMAIN` | 無 | `.env` 或 Colab Secret | 必填。ngrok 指派的固定 HTTPS 網域。更換網域後，也要更新 `app-config.js`。 |
+| `NGROK_API_KEY` | 空白 | `.env` 或 Colab Secret | 選用。只用於解除同一靜態網域被舊 Colab Agent 佔用的狀況。 |
+| `NGROK_REMOTE_RECOVERY` | `true` | `.env` 或 Colab Secret | 設為 `false` 可避免新啟動的 Colab 停止另一個正在使用相同網域的部署。 |
+| `PORT` | `5000` | `.env` | Flask 本機連接埠；通常不必改。若已被其他程式占用才改，ngrok 會自動跟隨。 |
+| `ADMIN_TOKEN` | 無 | `.env` 或 Colab Secret | 必填。教師端管理密碼，請使用長且隨機的值；更換後需在教師頁重新輸入。 |
+| `CORS_ALLOWED_ORIGINS` | `*` | `.env` 或 Colab Secret | 可呼叫 API 的前端網址，多個網址以逗號分隔。正式發布務必填入確切的 HTTPS 網址；本機 `file://` 測試才使用 `*`。 |
+| `MAX_CONCURRENT_GRADES` | `3` | `.env` 或 Colab Secret | 同時 AI 評分數。15 人班級和免費 Colab 建議 `2`～`3`；提高會加快處理，但更容易碰到模型額度與 Colab 資源限制。 |
+| `MAX_QUEUED_GRADES` | `24` | `.env` 或 Colab Secret | 最多等待中的 AI 評分數。15 人班級可維持 `24`；超過時學生會收到稍後再試。 |
+| `CONFIG_PATH` | `grader_config.json` | `.env` | 未使用或無法連線 Firestore 時的本機設定檔位置。此模式隨 Colab 重啟可能遺失。 |
+
+### Firestore 資料保存參數
+
+| 參數 | 預設值 | 放置位置／如何調整 | 用途與建議 |
+| --- | --- | --- | --- |
+| `FIREBASE_ENABLED` | `false` | `.env` 或 Colab Secret | 設為 `true` 才保存教師設定與學生紀錄到 Firestore。未啟用時僅保存在當前工作階段。 |
+| `FIREBASE_PROJECT_ID` | 空白 | `.env` 或 Colab Secret | 啟用 Firestore 時必填，填入自己的 Firebase／Google Cloud 專案 ID。 |
+| `FIREBASE_CONFIG_COLLECTION` | `scratchgrader` | `.env` | 教師共用設定所在集合名稱。多班級共用同一個 Firestore 時可改為不同名稱以隔離資料。 |
+| `FIREBASE_CONFIG_DOCUMENT` | `config` | `.env` | 教師共用設定文件名稱。不同班級應使用不同名稱，避免最後儲存者覆蓋其他班級設定。 |
+| `FIREBASE_SUBMISSIONS_COLLECTION` | `scratchgrader_submissions` | `.env` | 學生自評紀錄集合名稱；可依班級改名隔離。 |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | 空白 | **僅 Colab Secret** | 完整服務帳戶 JSON。不可寫入 `.env`、HTML 或 GitHub。 |
+| `FIREBASE_SERVICE_ACCOUNT_FILE` | 空白 | 本機 `.env` | 服務帳戶 JSON 的本機路徑；檔案必須保留在版控之外。 |
+| `GOOGLE_APPLICATION_CREDENTIALS` | 空白 | 本機 `.env` | `FIREBASE_SERVICE_ACCOUNT_FILE` 的替代方案，填入服務帳戶 JSON 路徑。 |
+
+### 教師頁面可調整的評分設定
+
+這些不是環境變數；由教師登入教師頁填寫並儲存。FireStore 可用時會永久保存，否則僅保留目前 Colab 工作階段。
+
+| 設定 | 如何調整 | 影響範圍 |
 | --- | --- | --- |
-| `NGROK_AUTHTOKEN` | 必要 | 新的 ngrok authtoken |
-| `NGROK_STATIC_DOMAIN` | 必要 | 新的靜態網域 |
-| `ADMIN_TOKEN` | 必要 | 保護所有 `/api/teacher/*` 端點 |
-| `FIREBASE_ENABLED` | 選用 | `true` 才啟用 Firestore |
-| `FIREBASE_PROJECT_ID` | Firestore 時必要 | 新的 Firebase/Google Cloud 專案 ID |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Colab 時必要 | Firestore 服務帳戶 JSON（Colab Secret） |
-| `FIREBASE_SERVICE_ACCOUNT_FILE` | 本機時建議 | Firestore 服務帳戶 JSON 檔案的路徑 |
-| `CORS_ALLOWED_ORIGINS` | 正式部署建議 | 允許呼叫 API 的前端來源，逗號分隔 |
+| API Key 1／2 | 在教師頁輸入自己的 Generative AI API key | 用於取得 Gemini／Gemma 模型清單與進行評分。使用免費 Gemma 時，請在模型清單選擇帳號實際可用的 Gemma。 |
+| 評分模型 | 按「載入可用模型」後選擇 | 預設為 `gemini-2.5-flash`；免費額度優先時可選擇清單中的 Gemma。不要設定自動切換到付費模型。 |
+| 每份冷卻秒數 | 教師頁調整，預設 `13` 秒 | 全系統每次開始呼叫 AI 前至少間隔的秒數。免費 Gemma 建議維持 `10`～`15`；額度充足且模型穩定時才降低。 |
+| 作業主題與評分規則 | 直接編輯，或用參考解答產生後再審閱 | 決定 AI 依據什麼標準評分；教師修改後必須按「儲存設定」才會提供給學生。 |
+| 初始範本與參考解答 `.sb3` | 上傳後轉成虛擬碼並儲存 | 可讓評分依指定範本／解答比較。 |
+| 是否依標準答案評分 | 教師頁勾選 | 勾選時重視是否符合參考解答；取消時較著重教師規則與創意。 |
+| 是否向學生顯示分數 | 教師頁勾選 | 取消後仍會記錄真實分數（Firestore 啟用時），但學生只看到分析與建議。 |
+| 最大 `.sb3` 解析大小 | 教師頁調整，預設 `10 MB` | 限制 Scratch 專案內 `project.json` 的解析大小；一般作業維持預設即可。 |
 
-Gemini API key 不放在 `.env`，而是由教師登入教師頁面後輸入並保存於後端設定。請使用新的 key，且在 Google Cloud Console 限制其 API 與使用來源。
+Gemini／Gemma API key 不放在 `.env`，而是由教師登入教師頁面後輸入並保存於後端設定。請使用新的 key，並在 Google Cloud Console 限制其 API 與使用來源。
+
+### 前端網址參數
+
+`app-config.js` 只調整下列公開網址，不得放入任何密碼或 API key：
+
+```js
+window.SCRATCH_GRADER_API_URL = 'https://你的-ngrok-靜態網域.ngrok-free.app';
+```
+
+也可在開啟教師／學生 HTML 時附加 `?api=https://你的網域` 暫時覆蓋網址，適合測試；正式發布時仍建議修改 `app-config.js`。
 
 ## 轉移給其他使用者
 

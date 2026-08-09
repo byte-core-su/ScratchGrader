@@ -163,7 +163,9 @@ async function grade(){
     const r=await fetch(base()+'/api/student/grade',{method:'POST',headers:H,body:fd});
     const j=await r.json();
     if(!j.ok){ setStatus('❌ '+(j.error||'自評失敗'),'err'); $('gradeBtn').disabled=false; return; }
-    render(j.result); setStatus('');
+    render(j.result);
+    const queuedAhead=(j.queue&&j.queue.queued_ahead)||0;
+    setStatus(queuedAhead ? ('✅ 評分完成（送出時前方有 '+queuedAhead+' 份作業排隊）') : '✅ 評分完成','ok');
   }catch(e){ setStatus('❌ '+e.message,'err'); $('gradeBtn').disabled=false; }
 }
 

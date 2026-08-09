@@ -1,0 +1,1206 @@
+{
+  "metadata": {
+    "locale": "zh-tw",
+    "sources": {
+      "scratch_l10n_commit": "682bf4a868a51accb316eee586a01beb27d65567",
+      "scratch_vm_commit": "b3266a0cfe5122f20b72ccd738a3dd4dff4fc5a5",
+      "blocks": "scratch-l10n/editor/blocks/zh-tw.json",
+      "extensions": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "generated_by": "tools/sync_official_scratch_zh_tw.py"
+  },
+  "opcodes": {
+    "argument_reporter_boolean": {
+      "template": "自訂積木布林參數 %1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "argument_reporter_string_number": {
+      "template": "自訂積木文字或數字參數 %1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "boost_getMotorPosition": {
+      "template": "[MOTOR_REPORTER_ID] 轉向角度",
+      "message_id": "boost.getMotorPosition",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_getTiltAngle": {
+      "template": "傾斜角度 [TILT_DIRECTION]",
+      "message_id": "boost.getTiltAngle",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_motorOff": {
+      "template": "[MOTOR_ID] 停止",
+      "message_id": "boost.motorOff",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_motorOn": {
+      "template": "[MOTOR_ID] 啟動",
+      "message_id": "boost.motorOn",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_motorOnFor": {
+      "template": "[MOTOR_ID] 啟動 持續 [DURATION] 秒",
+      "message_id": "boost.motorOnFor",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_motorOnForRotation": {
+      "template": "[MOTOR_ID] 啟動 持續 [ROTATION] 圈",
+      "message_id": "boost.motorOnForRotation",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_seeingColor": {
+      "template": "看到顏色 [COLOR]？",
+      "message_id": "boost.seeingColor",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_setLightHue": {
+      "template": "LED 顏色設為 [HUE]",
+      "message_id": "boost.setLightHue",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_setMotorDirection": {
+      "template": "[MOTOR_ID] 方向設為 [MOTOR_DIRECTION]",
+      "message_id": "boost.setMotorDirection",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_setMotorPower": {
+      "template": "[MOTOR_ID] 動力設為 [POWER] %",
+      "message_id": "boost.setMotorPower",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_whenColor": {
+      "template": "當顏色 [COLOR]  被看到",
+      "message_id": "boost.whenColor",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "boost_whenTilted": {
+      "template": "當傾斜 [TILT_DIRECTION_ANY]",
+      "message_id": "boost.whenTilted",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "colour_picker": {
+      "template": "%1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "control_all_at_once": {
+      "template": "全部一起",
+      "message_id": "CONTROL_ALLATONCE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_clear_counter": {
+      "template": "計數器重置",
+      "message_id": "CONTROL_CLEARCOUNTER",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_create_clone_of": {
+      "template": "建立 %1 的分身",
+      "message_id": "CONTROL_CREATECLONEOF",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_delete_this_clone": {
+      "template": "分身刪除",
+      "message_id": "CONTROL_DELETETHISCLONE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_for_each": {
+      "template": "計數 %1 於 %2",
+      "message_id": "CONTROL_FOREACH",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_forever": {
+      "template": "重複無限次",
+      "message_id": "CONTROL_FOREVER",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_get_counter": {
+      "template": "計數器",
+      "message_id": "CONTROL_COUNTER",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_if": {
+      "template": "如果 %1 那麼",
+      "message_id": "CONTROL_IF",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_if_else": {
+      "template": "如果 %1 那麼",
+      "message_id": "CONTROL_IF",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_incr_counter": {
+      "template": "計數器累計",
+      "message_id": "CONTROL_INCRCOUNTER",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_repeat": {
+      "template": "重複 %1 次",
+      "message_id": "CONTROL_REPEAT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_repeat_until": {
+      "template": "重複直到 %1",
+      "message_id": "CONTROL_REPEATUNTIL",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_start_as_clone": {
+      "template": "當分身產生",
+      "message_id": "CONTROL_STARTASCLONE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_stop": {
+      "template": "停止",
+      "message_id": "CONTROL_STOP",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_wait": {
+      "template": "等待 %1 秒",
+      "message_id": "CONTROL_WAIT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_wait_until": {
+      "template": "等待直到 %1",
+      "message_id": "CONTROL_WAITUNTIL",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "control_while": {
+      "template": "當 %1",
+      "message_id": "CONTROL_WHILE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_addtolist": {
+      "template": "添加 %1 到 %2",
+      "message_id": "DATA_ADDTOLIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_changevariableby": {
+      "template": "變數 %1 改變 %2",
+      "message_id": "DATA_CHANGEVARIABLEBY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_deletealloflist": {
+      "template": "刪除 %1 的所有項目",
+      "message_id": "DATA_DELETEALLOFLIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_deleteoflist": {
+      "template": "刪除 %2 的第 %1 項",
+      "message_id": "DATA_DELETEOFLIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_hidelist": {
+      "template": "清單 %1 隱藏",
+      "message_id": "DATA_HIDELIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_hidevariable": {
+      "template": "變數 %1 隱藏",
+      "message_id": "DATA_HIDEVARIABLE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_insertatlist": {
+      "template": "插入 %1 到 %3 的第 %2 項",
+      "message_id": "DATA_INSERTATLIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_itemnumoflist": {
+      "template": "%1 在 %2 裡的項目編號",
+      "message_id": "DATA_ITEMNUMOFLIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_itemoflist": {
+      "template": "%2 的第 %1 項",
+      "message_id": "DATA_ITEMOFLIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_lengthoflist": {
+      "template": "清單 %1 的長度",
+      "message_id": "DATA_LENGTHOFLIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_listcontainsitem": {
+      "template": "清單 %1 包含 %2？",
+      "message_id": "DATA_LISTCONTAINSITEM",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_listcontents": {
+      "template": "清單 %1 的內容",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "data_replaceitemoflist": {
+      "template": "替換 %2 的第 %1 項為 %3",
+      "message_id": "DATA_REPLACEITEMOFLIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_setvariableto": {
+      "template": "變數 %1 設為 %2",
+      "message_id": "DATA_SETVARIABLETO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_showlist": {
+      "template": "清單 %1 顯示",
+      "message_id": "DATA_SHOWLIST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_showvariable": {
+      "template": "變數 %1 顯示",
+      "message_id": "DATA_SHOWVARIABLE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "data_variable": {
+      "template": "變數 %1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "ev3_beep": {
+      "template": "演奏音階 [NOTE] 持續 [TIME] 秒",
+      "message_id": "ev3.beepNote",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_buttonPressed": {
+      "template": "按鈕 [PORT] 被按下？",
+      "message_id": "ev3.buttonPressed",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_getBrightness": {
+      "template": "亮度",
+      "message_id": "ev3.getBrightness",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_getDistance": {
+      "template": "距離",
+      "message_id": "ev3.getDistance",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_getMotorPosition": {
+      "template": "馬達 埠[PORT] 轉向角度",
+      "message_id": "ev3.getMotorPosition",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_motorSetPower": {
+      "template": "馬達 埠[PORT] 動力設為 [POWER] %",
+      "message_id": "ev3.motorSetPower",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_motorTurnClockwise": {
+      "template": "馬達 埠[PORT] 順時針旋轉 [TIME] 秒",
+      "message_id": "ev3.motorTurnClockwise",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_motorTurnCounterClockwise": {
+      "template": "馬達 埠[PORT] 逆時針旋轉 [TIME] 秒",
+      "message_id": "ev3.motorTurnCounterClockwise",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_whenBrightnessLessThan": {
+      "template": "當亮度 < [DISTANCE]",
+      "message_id": "ev3.whenBrightnessLessThan",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_whenButtonPressed": {
+      "template": "當按鈕 [PORT] 被按下",
+      "message_id": "ev3.whenButtonPressed",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "ev3_whenDistanceLessThan": {
+      "template": "當距離 < [DISTANCE]",
+      "message_id": "ev3.whenDistanceLessThan",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "event_broadcast": {
+      "template": "廣播訊息 %1",
+      "message_id": "EVENT_BROADCAST",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "event_broadcastandwait": {
+      "template": "廣播訊息 %1 並等待",
+      "message_id": "EVENT_BROADCASTANDWAIT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "event_whenbackdropswitchesto": {
+      "template": "當背景換成 %1",
+      "message_id": "EVENT_WHENBACKDROPSWITCHESTO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "event_whenbroadcastreceived": {
+      "template": "當收到訊息 %1",
+      "message_id": "EVENT_WHENBROADCASTRECEIVED",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "event_whenflagclicked": {
+      "template": "當 %1 被點擊",
+      "message_id": "EVENT_WHENFLAGCLICKED",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "event_whengreaterthan": {
+      "template": "當 %1 > %2",
+      "message_id": "EVENT_WHENGREATERTHAN",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "event_whenkeypressed": {
+      "template": "當 %1 鍵被按下",
+      "message_id": "EVENT_WHENKEYPRESSED",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "event_whenstageclicked": {
+      "template": "當舞台被點擊",
+      "message_id": "EVENT_WHENSTAGECLICKED",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "event_whenthisspriteclicked": {
+      "template": "當角色被點擊",
+      "message_id": "EVENT_WHENTHISSPRITECLICKED",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "event_whentouchingobject": {
+      "template": "當角色碰到 %1",
+      "message_id": "EVENT_WHENTOUCHINGOBJECT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "gdxfor_getAcceleration": {
+      "template": "加速度 [DIRECTION]",
+      "message_id": "gdxfor.getAcceleration",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "gdxfor_getForce": {
+      "template": "力量",
+      "message_id": "gdxfor.getForce",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "gdxfor_getSpinSpeed": {
+      "template": "旋轉速度 [DIRECTION]",
+      "message_id": "gdxfor.getSpin",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "gdxfor_getTilt": {
+      "template": "傾斜角度 [TILT]",
+      "message_id": "gdxfor.getTilt",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "gdxfor_isFreeFalling": {
+      "template": "自由掉落？",
+      "message_id": "gdxfor.isFreeFalling",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "gdxfor_isTilted": {
+      "template": "傾斜 [TILT]？",
+      "message_id": "gdxfor.isTilted",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "gdxfor_whenForcePushedOrPulled": {
+      "template": "當重力感測器[PUSH_PULL]",
+      "message_id": "gdxfor.whenForcePushedOrPulled",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "gdxfor_whenGesture": {
+      "template": "當 [GESTURE]",
+      "message_id": "gdxfor.whenGesture",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "gdxfor_whenTilted": {
+      "template": "當傾斜 [TILT]",
+      "message_id": "gdxfor.whenTilted",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "looks_backdropnumbername": {
+      "template": "背景 %1",
+      "message_id": "LOOKS_BACKDROPNUMBERNAME",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_changeeffectby": {
+      "template": "圖像效果 %1 改變 %2",
+      "message_id": "LOOKS_CHANGEEFFECTBY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_changesizeby": {
+      "template": "尺寸改變 %1",
+      "message_id": "LOOKS_CHANGESIZEBY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_cleargraphiceffects": {
+      "template": "圖像效果清除",
+      "message_id": "LOOKS_CLEARGRAPHICEFFECTS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_costumenumbername": {
+      "template": "造型 %1",
+      "message_id": "LOOKS_COSTUMENUMBERNAME",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_goforwardbackwardlayers": {
+      "template": "圖層 %1 移 %2 層",
+      "message_id": "LOOKS_GOFORWARDBACKWARDLAYERS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_gotofrontback": {
+      "template": "圖層移到 %1 層",
+      "message_id": "LOOKS_GOTOFRONTBACK",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_hide": {
+      "template": "隱藏",
+      "message_id": "LOOKS_HIDE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_nextbackdrop": {
+      "template": "下一個背景",
+      "message_id": "LOOKS_NEXTBACKDROP",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_nextcostume": {
+      "template": "造型換成下一個",
+      "message_id": "LOOKS_NEXTCOSTUME",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_say": {
+      "template": "說出 %1",
+      "message_id": "LOOKS_SAY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_sayforsecs": {
+      "template": "說出 %1 持續 %2 秒",
+      "message_id": "LOOKS_SAYFORSECS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_seteffectto": {
+      "template": "圖像效果 %1 設為 %2",
+      "message_id": "LOOKS_SETEFFECTTO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_setsizeto": {
+      "template": "尺寸設為 %1 %",
+      "message_id": "LOOKS_SETSIZETO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_show": {
+      "template": "顯示",
+      "message_id": "LOOKS_SHOW",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_size": {
+      "template": "尺寸",
+      "message_id": "LOOKS_SIZE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_switchbackdropto": {
+      "template": "背景換成 %1",
+      "message_id": "LOOKS_SWITCHBACKDROPTO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_switchbackdroptoandwait": {
+      "template": "背景換成 %1 並等待",
+      "message_id": "LOOKS_SWITCHBACKDROPTOANDWAIT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_switchcostumeto": {
+      "template": "造型換成 %1",
+      "message_id": "LOOKS_SWITCHCOSTUMETO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_think": {
+      "template": "想著 %1",
+      "message_id": "LOOKS_THINK",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "looks_thinkforsecs": {
+      "template": "想著 %1 持續 %2 秒",
+      "message_id": "LOOKS_THINKFORSECS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "makeymakey_whenCodePressed": {
+      "template": "當 [SEQUENCE] 按鈕被依序按下",
+      "message_id": "makeymakey.whenKeysPressedInOrder",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "makeymakey_whenMakeyKeyPressed": {
+      "template": "當 [KEY] 按鈕被按下",
+      "message_id": "makeymakey.whenKeyPressed",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "math_angle": {
+      "template": "%1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "math_integer": {
+      "template": "%1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "math_number": {
+      "template": "%1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "math_positive_number": {
+      "template": "%1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "math_whole_number": {
+      "template": "%1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "microbit_displayClear": {
+      "template": "清空畫面",
+      "message_id": "microbit.clearDisplay",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "microbit_displaySymbol": {
+      "template": "顯示圖示 [MATRIX]",
+      "message_id": "microbit.displaySymbol",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "microbit_displayText": {
+      "template": "顯示文字 [TEXT]",
+      "message_id": "microbit.displayText",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "microbit_getTiltAngle": {
+      "template": "傾斜角度 [DIRECTION]",
+      "message_id": "microbit.tiltAngle",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "microbit_isButtonPressed": {
+      "template": "按鈕 [BTN] 被按下？",
+      "message_id": "microbit.isButtonPressed",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "microbit_isTilted": {
+      "template": "傾斜 [DIRECTION]？",
+      "message_id": "microbit.isTilted",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "microbit_whenButtonPressed": {
+      "template": "當按鈕 [BTN] 被按下",
+      "message_id": "microbit.whenButtonPressed",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "microbit_whenGesture": {
+      "template": "當 [GESTURE]",
+      "message_id": "microbit.whenGesture",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "microbit_whenPinConnected": {
+      "template": "當引腳 [PIN] 接地",
+      "message_id": "microbit.whenPinConnected",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "microbit_whenTilted": {
+      "template": "當傾斜 [DIRECTION]",
+      "message_id": "microbit.whenTilted",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "motion_changexby": {
+      "template": "x 改變 %1",
+      "message_id": "MOTION_CHANGEXBY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_changeyby": {
+      "template": "y 改變 %1",
+      "message_id": "MOTION_CHANGEYBY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_direction": {
+      "template": "方向",
+      "message_id": "MOTION_DIRECTION",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_glidesecstoxy": {
+      "template": "滑行 %1 秒到 x:%2 y:%3",
+      "message_id": "MOTION_GLIDESECSTOXY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_glideto": {
+      "template": "滑行 %1 秒到 %2 位置",
+      "message_id": "MOTION_GLIDETO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_goto": {
+      "template": "定位到 %1 位置",
+      "message_id": "MOTION_GOTO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_gotoxy": {
+      "template": "定位到 x:%1 y:%2",
+      "message_id": "MOTION_GOTOXY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_ifonedgebounce": {
+      "template": "碰到邊緣就反彈",
+      "message_id": "MOTION_IFONEDGEBOUNCE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_movesteps": {
+      "template": "移動 %1 點",
+      "message_id": "MOTION_MOVESTEPS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_pointindirection": {
+      "template": "面朝 %1 度",
+      "message_id": "MOTION_POINTINDIRECTION",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_pointtowards": {
+      "template": "面朝 %1 向",
+      "message_id": "MOTION_POINTTOWARDS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_setrotationstyle": {
+      "template": "迴轉方式設為 %1",
+      "message_id": "MOTION_SETROTATIONSTYLE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_setx": {
+      "template": "x 設為 %1",
+      "message_id": "MOTION_SETX",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_sety": {
+      "template": "y 設為 %1",
+      "message_id": "MOTION_SETY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_turnleft": {
+      "template": "左轉 %1 %2 度",
+      "message_id": "MOTION_TURNLEFT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_turnright": {
+      "template": "右轉 %1 %2 度",
+      "message_id": "MOTION_TURNRIGHT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_xposition": {
+      "template": "x 座標",
+      "message_id": "MOTION_XPOSITION",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "motion_yposition": {
+      "template": "y 座標",
+      "message_id": "MOTION_YPOSITION",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "music_changeTempo": {
+      "template": "演奏速度改變 [TEMPO]",
+      "message_id": "music.changeTempo",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "music_getTempo": {
+      "template": "演奏速度",
+      "message_id": "music.getTempo",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "music_midiPlayDrumForBeats": {
+      "template": "演奏節拍 [DRUM] [BEATS] 拍",
+      "message_id": "music.midiPlayDrumForBeats",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "music_midiSetInstrument": {
+      "template": "演奏樂器設為 [INSTRUMENT]",
+      "message_id": "music.midiSetInstrument",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "music_playDrumForBeats": {
+      "template": "演奏節拍 [DRUM] [BEATS] 拍",
+      "message_id": "music.playDrumForBeats",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "music_playNoteForBeats": {
+      "template": "演奏音階 [NOTE] [BEATS] 拍",
+      "message_id": "music.playNoteForBeats",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "music_restForBeats": {
+      "template": "演奏休息 [BEATS] 拍",
+      "message_id": "music.restForBeats",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "music_setInstrument": {
+      "template": "演奏樂器設為 [INSTRUMENT]",
+      "message_id": "music.setInstrument",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "music_setTempo": {
+      "template": "演奏速度設為 [TEMPO]",
+      "message_id": "music.setTempo",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "operator_add": {
+      "template": "%1 + %2",
+      "message_id": "OPERATORS_ADD",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_and": {
+      "template": "%1 且 %2",
+      "message_id": "OPERATORS_AND",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_contains": {
+      "template": "字串 %1 包含 %2？",
+      "message_id": "OPERATORS_CONTAINS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_divide": {
+      "template": "%1 / %2",
+      "message_id": "OPERATORS_DIVIDE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_equals": {
+      "template": "%1 = %2",
+      "message_id": "OPERATORS_EQUALS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_gt": {
+      "template": "%1 > %2",
+      "message_id": "OPERATORS_GT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_join": {
+      "template": "字串組合 %1 %2",
+      "message_id": "OPERATORS_JOIN",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_length": {
+      "template": "字串 %1 的長度",
+      "message_id": "OPERATORS_LENGTH",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_letter_of": {
+      "template": "字串 %2 的第 %1 字",
+      "message_id": "OPERATORS_LETTEROF",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_lt": {
+      "template": "%1 < %2",
+      "message_id": "OPERATORS_LT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_mathop": {
+      "template": "%1 數值 %2",
+      "message_id": "OPERATORS_MATHOP",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_mod": {
+      "template": "%1 除以 %2 的餘數",
+      "message_id": "OPERATORS_MOD",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_multiply": {
+      "template": "%1 * %2",
+      "message_id": "OPERATORS_MULTIPLY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_not": {
+      "template": "%1 不成立",
+      "message_id": "OPERATORS_NOT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_or": {
+      "template": "%1 或 %2",
+      "message_id": "OPERATORS_OR",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_random": {
+      "template": "隨機取數 %1 到 %2",
+      "message_id": "OPERATORS_RANDOM",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_round": {
+      "template": "四捨五入數值 %1",
+      "message_id": "OPERATORS_ROUND",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "operator_subtract": {
+      "template": "%1 - %2",
+      "message_id": "OPERATORS_SUBTRACT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "pen_changePenColorParamBy": {
+      "template": "筆跡 [COLOR_PARAM] 改變 [VALUE]",
+      "message_id": "pen.changeColorParam",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_changePenHueBy": {
+      "template": "筆跡顏色改變 [HUE]",
+      "message_id": "pen.changeHue",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_changePenShadeBy": {
+      "template": "筆跡亮度改變 [SHADE]",
+      "message_id": "pen.changeShade",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_changePenSizeBy": {
+      "template": "筆跡寬度改變 [SIZE]",
+      "message_id": "pen.changeSize",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_clear": {
+      "template": "筆跡全部清除",
+      "message_id": "pen.clear",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_penDown": {
+      "template": "下筆",
+      "message_id": "pen.penDown",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_penUp": {
+      "template": "停筆",
+      "message_id": "pen.penUp",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_setPenColorParamTo": {
+      "template": "筆跡 [COLOR_PARAM] 設為 [VALUE]",
+      "message_id": "pen.setColorParam",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_setPenColorToColor": {
+      "template": "筆跡顏色設為 [COLOR]",
+      "message_id": "pen.setColor",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_setPenHueToNumber": {
+      "template": "筆跡顏色設為 [HUE]",
+      "message_id": "pen.setHue",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_setPenShadeToNumber": {
+      "template": "筆跡亮度設為 [SHADE]",
+      "message_id": "pen.setShade",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_setPenSizeTo": {
+      "template": "筆跡寬度設為 [SIZE]",
+      "message_id": "pen.setSize",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "pen_stamp": {
+      "template": "蓋章",
+      "message_id": "pen.stamp",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "procedures_call": {
+      "template": "執行自訂積木 %1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "procedures_definition": {
+      "template": "定義 %1",
+      "message_id": "PROCEDURES_DEFINITION",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "procedures_prototype": {
+      "template": "自訂積木原型",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "sensing_answer": {
+      "template": "詢問的答案",
+      "message_id": "SENSING_ANSWER",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_askandwait": {
+      "template": "詢問 %1 並等待",
+      "message_id": "SENSING_ASKANDWAIT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_coloristouchingcolor": {
+      "template": "顏色 %1 碰到 顏色 %2？",
+      "message_id": "SENSING_COLORISTOUCHINGCOLOR",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_current": {
+      "template": "目前時間的 %1",
+      "message_id": "SENSING_CURRENT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_dayssince2000": {
+      "template": "2000年迄今日數",
+      "message_id": "SENSING_DAYSSINCE2000",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_distanceto": {
+      "template": "與 %1 的間距",
+      "message_id": "SENSING_DISTANCETO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_keypressed": {
+      "template": "%1 鍵被按下？",
+      "message_id": "SENSING_KEYPRESSED",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_loud": {
+      "template": "大聲？",
+      "message_id": "SENSING_LOUD",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_loudness": {
+      "template": "聲音響度",
+      "message_id": "SENSING_LOUDNESS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_mousedown": {
+      "template": "滑鼠鍵被按下？",
+      "message_id": "SENSING_MOUSEDOWN",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_mousex": {
+      "template": "鼠標的 x",
+      "message_id": "SENSING_MOUSEX",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_mousey": {
+      "template": "鼠標的 y",
+      "message_id": "SENSING_MOUSEY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_of": {
+      "template": "%2 的 %1",
+      "message_id": "SENSING_OF",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_resettimer": {
+      "template": "計時器重置",
+      "message_id": "SENSING_RESETTIMER",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_setdragmode": {
+      "template": "拖曳方式設為 %1",
+      "message_id": "SENSING_SETDRAGMODE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_timer": {
+      "template": "計時器",
+      "message_id": "SENSING_TIMER",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_touchingcolor": {
+      "template": "碰到顏色 %1？",
+      "message_id": "SENSING_TOUCHINGCOLOR",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_touchingobject": {
+      "template": "碰到 %1？",
+      "message_id": "SENSING_TOUCHINGOBJECT",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sensing_username": {
+      "template": "用戶名稱",
+      "message_id": "SENSING_USERNAME",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sound_beats_menu": {
+      "template": "%1 拍",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "sound_changeeffectby": {
+      "template": "聲音效果 %1 改變 %2",
+      "message_id": "SOUND_CHANGEEFFECTBY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sound_changevolumeby": {
+      "template": "音量改變 %1",
+      "message_id": "SOUND_CHANGEVOLUMEBY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sound_cleareffects": {
+      "template": "聲音效果清除",
+      "message_id": "SOUND_CLEAREFFECTS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sound_effects_menu": {
+      "template": "聲音效果 %1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "sound_play": {
+      "template": "播放音效 %1",
+      "message_id": "SOUND_PLAY",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sound_playuntildone": {
+      "template": "播放音效 %1 直到結束",
+      "message_id": "SOUND_PLAYUNTILDONE",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sound_seteffectto": {
+      "template": "聲音效果 %1 設為 %2",
+      "message_id": "SOUND_SETEFFECTO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sound_setvolumeto": {
+      "template": "音量設為 %1%",
+      "message_id": "SOUND_SETVOLUMETO",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sound_sounds_menu": {
+      "template": "音效 %1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "sound_stopallsounds": {
+      "template": "停播所有音效",
+      "message_id": "SOUND_STOPALLSOUNDS",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "sound_volume": {
+      "template": "音量",
+      "message_id": "SOUND_VOLUME",
+      "source": "scratch-l10n/editor/blocks/zh-tw.json"
+    },
+    "speech2text_getSpeech": {
+      "template": "語音文本",
+      "message_id": "speech.speechReporter",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "speech2text_listenAndWait": {
+      "template": "收聽並等待",
+      "message_id": "speech.listenAndWait",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "speech2text_whenIHearHat": {
+      "template": "當收到語音 [PHRASE]",
+      "message_id": "speech.whenIHear",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "text": {
+      "template": "%1",
+      "message_id": null,
+      "source": "Scratch project.json internal input block"
+    },
+    "text2speech_setLanguage": {
+      "template": "語言設為 [LANGUAGE]",
+      "message_id": "text2speech.setLanguageBlock",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "text2speech_setVoice": {
+      "template": "語音設為 [VOICE]",
+      "message_id": "text2speech.setVoiceBlock",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "text2speech_speakAndWait": {
+      "template": "唸出 [WORDS]",
+      "message_id": "text2speech.speakAndWaitBlock",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "translate_getTranslate": {
+      "template": "文字 [WORDS] 翻譯成 [LANGUAGE]",
+      "message_id": "translate.translateBlock",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "translate_getViewerLanguage": {
+      "template": "瀏覽者的語言",
+      "message_id": "translate.viewerLanguage",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "videoSensing_setVideoTransparency": {
+      "template": "視訊透明度設為 [TRANSPARENCY]",
+      "message_id": "videoSensing.setVideoTransparency",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "videoSensing_videoOn": {
+      "template": "[SUBJECT] 的視訊 [ATTRIBUTE]",
+      "message_id": "videoSensing.videoOn",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "videoSensing_videoToggle": {
+      "template": "視訊設為 [VIDEO_STATE]",
+      "message_id": "videoSensing.videoToggle",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "videoSensing_whenMotionGreaterThan": {
+      "template": "當視訊動作 > [REFERENCE]",
+      "message_id": "videoSensing.whenMotionGreaterThan",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_getDistance": {
+      "template": "距離",
+      "message_id": "wedo2.getDistance",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_getTiltAngle": {
+      "template": "傾斜角度 [TILT_DIRECTION]",
+      "message_id": "wedo2.getTiltAngle",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_isTilted": {
+      "template": "傾斜 [TILT_DIRECTION_ANY]？",
+      "message_id": "wedo2.isTilted",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_motorOff": {
+      "template": "[MOTOR_ID] 停止",
+      "message_id": "wedo2.motorOff",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_motorOn": {
+      "template": "[MOTOR_ID] 啟動",
+      "message_id": "wedo2.motorOn",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_motorOnFor": {
+      "template": "[MOTOR_ID] 啟動 持續 [DURATION] 秒",
+      "message_id": "wedo2.motorOnFor",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_playNoteFor": {
+      "template": "演奏音階 [NOTE] 持續 [DURATION] 秒",
+      "message_id": "wedo2.playNoteFor",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_setLightHue": {
+      "template": "LED 顏色設為 [HUE]",
+      "message_id": "wedo2.setLightHue",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_setMotorDirection": {
+      "template": "[MOTOR_ID] 方向設為 [MOTOR_DIRECTION]",
+      "message_id": "wedo2.setMotorDirection",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_startMotorPower": {
+      "template": "[MOTOR_ID] 動力設為 [POWER]",
+      "message_id": "wedo2.startMotorPower",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_whenDistance": {
+      "template": "當距離 [OP] [REFERENCE]",
+      "message_id": "wedo2.whenDistance",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    },
+    "wedo2_whenTilted": {
+      "template": "當傾斜 [TILT_DIRECTION_ANY]",
+      "message_id": "wedo2.whenTilted",
+      "source": "scratch-l10n/editor/extensions/zh-tw.json"
+    }
+  },
+  "coverage": {
+    "official_vm_opcodes": 218,
+    "unresolved_official_vm_opcodes": [],
+    "internal_project_json_opcodes": [
+      "argument_reporter_boolean",
+      "argument_reporter_string_number",
+      "colour_picker",
+      "data_listcontents",
+      "data_variable",
+      "math_angle",
+      "math_integer",
+      "math_number",
+      "math_positive_number",
+      "math_whole_number",
+      "procedures_call",
+      "procedures_prototype",
+      "sound_beats_menu",
+      "sound_effects_menu",
+      "sound_sounds_menu",
+      "text"
+    ]
+  }
+}

@@ -33,6 +33,7 @@ except ImportError:
 
 from google import genai
 from google.genai import types
+from scratch_translation import opcode_entry, project_opcode_coverage, render_official_block
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
@@ -67,15 +68,14 @@ def get_input_readable(input_data, blocks):
     if isinstance(payload, str) and payload in blocks:
         target_b = blocks[payload]
         op = target_b.get("opcode", "unknown")
-        inner_fields = []
+        inner_params = []
         for fk, fv in target_b.get("fields", {}).items():
             if isinstance(fv, list) and len(fv) > 0:
-                inner_fields.append(str(fv[0]).replace('\n', ' ').replace('\r', ' '))
-        inner_inputs = []
+                inner_params.append((fk, str(fv[0]).replace('\n', ' ').replace('\r', ' ')))
         for ik, iv in target_b.get("inputs", {}).items():
             val = get_input_readable(iv, blocks)
-            if val: inner_inputs.append(val)
-        return f"[{op}: {' '.join(inner_fields + inner_inputs)}]"
+            if val: inner_params.append((ik, val))
+        return f"【{render_official_block(op, inner_params)}】"
     elif isinstance(payload, list):
         if len(payload) > 0:
             val_type = payload[0]
@@ -108,12 +108,15 @@ def parse_chain_recursive(block_id, indent_level, blocks_dict, visited=None):
             continue
 
         param_pairs = []
+        official_params = []
         substacks = {}
 
         if "fields" in b:
             for key, val in b["fields"].items():
                 if isinstance(val, list) and len(val) > 0:
-                    param_pairs.append(f"{key}:'{str(val[0]).replace(chr(10), ' ')[:50]}'")
+                    value = str(val[0]).replace(chr(10), ' ')[:50]
+                    param_pairs.append(f"{key}:'{value}'")
+                    official_params.append((key, value))
 
         if "inputs" in b:
             for key, val in b["inputs"].items():
@@ -122,18 +125,21 @@ def parse_chain_recursive(block_id, indent_level, blocks_dict, visited=None):
                         substacks[key] = val[1]
                 else:
                     readable = get_input_readable(val, blocks_dict)
-                    if readable: param_pairs.append(f"{key}:{readable[:100]}")
+                    if readable:
+                        param_pairs.append(f"{key}:{readable[:100]}")
+                        official_params.append((key, readable[:100]))
 
         param_str = ", ".join(param_pairs)
-        chain_text += f"{indent}{opcode} ({param_str})\n"
+        official_text = render_official_block(opcode, official_params)
+        chain_text += f"{indent}{official_text}（參數：{param_str}）\n" if param_str else f"{indent}{official_text}\n"
 
         if "SUBSTACK" in substacks:
             chain_text += parse_chain_recursive(substacks["SUBSTACK"], indent_level + 1, blocks_dict, visited)
             if "SUBSTACK2" in substacks and opcode == "control_if_else":
-                chain_text += f"{indent}--> (ELSE):\n"
+                chain_text += f"{indent}→ 否則：\n"
                 chain_text += parse_chain_recursive(substacks["SUBSTACK2"], indent_level + 1, blocks_dict, visited)
             if opcode.startswith("control_"):
-                 chain_text += f"{indent}--> (END {opcode})\n"
+                 chain_text += f"{indent}→ 結束控制結構\n"
 
         current_id = b.get("next")
     return chain_text
@@ -195,6 +201,13 @@ def extract_asset_manifest(raw_json):
         manifest += "以下內容由系統自動掃描，老師請務必人工確認後再發還作業！\n"
         for w in api_warnings:
             manifest += f"  ⛔ {w}\n"
+        manifest += "─" * 60 + "\n\n"
+
+    coverage = project_opcode_coverage(raw_json)
+    if coverage["unmapped_opcodes"]:
+        manifest += "【⚠️ 積木詞彙覆蓋警告】\n"
+        manifest += "以下 opcode 不在內附的 Scratch 官方繁中詞彙表；不得臆測其功能：\n"
+        manifest += "  " + "、".join(coverage["unmapped_opcodes"]) + "\n"
         manifest += "─" * 60 + "\n\n"
 
     # ✅ 平台擴充偵測：輸出已知平台積木說明 + 未知擴充警告
@@ -322,7 +335,12 @@ def _scan_unknown_extensions(raw_json, teacher_extension_prefixes=None):
             # 老師自訂擴充 → 跳過
             if teacher_prefixes and opcode.startswith(teacher_prefixes):
                 continue
-            # 已知平台積木 → 記錄說明
+            # Scratch 官方積木 → 使用內附的官方繁中名稱。
+            official = opcode_entry(opcode)
+            if official and official.get("source", "").startswith("scratch-l10n/"):
+                platform_found[opcode] = f"【Scratch 官方】{official['template']}"
+                continue
+            # 已知其他平台積木 → 記錄說明
             if opcode in _PLATFORM_OPCODE_DICT:
                 platform_found[opcode] = _PLATFORM_OPCODE_DICT[opcode]
                 continue
@@ -559,9 +577,11 @@ def generate_grading_prompt(theme, rules, template_clean_code, example_clean_cod
 
 🔥【評分嚴格度指示】🔥
 1. 鼓勵多元演算法：只要「最終執行邏輯」與題目要求完全一致，就算用了與老師不同的積木寫法，也給滿分。
-2. 嚴禁同情分：如果邏輯或防呆機制不完整，必須嚴格依照法律扣分。
-3. 加分題「絕對不扣分」原則：加分項目是額外獎勵！若達成請給予加分，若沒做或做錯，絕對不可列入扣分項目。
-4. 抄襲與空白判定：
+2. 回答時提及 Scratch 積木，一律採用提供的「官方繁體中文積木名稱」；不可把英文 opcode、非官方直譯或技術代號呈現給學生。
+   若看到「未對照積木」或「積木詞彙覆蓋警告」，只能說明該積木尚未收錄，不能自行猜測功能或據此扣分。
+3. 嚴禁同情分：如果邏輯或防呆機制不完整，必須嚴格依照法律扣分。
+4. 加分題「絕對不扣分」原則：加分項目是額外獎勵！若達成請給予加分，若沒做或做錯，絕對不可列入扣分項目。
+5. 抄襲與空白判定：
    - 若學生的程式碼與【初始空白範本】完全一致，給 0 分。{standard_rule}
 
 🛡️【全域防禦規則（所有作業通用，優先級僅次於最高指導原則）】🛡️
@@ -573,13 +593,13 @@ A. 孤兒積木與測試工具豁免鐵律：
      只要這些多餘的積木不干擾核心任務，請視為「良好的開發測試行為」，絕對不可因此扣分！
 
 B. 空條件判斷鐵律：
-   - 每當看到 control_if 或 control_if_else，必須同時檢查其 SUBSTACK（內部執行序列）。
-   - 若 control_if 和 END control_if 之間沒有任何積木，代表條件判斷是空殼，功能未實作。
+   - 每當看到「如果…那麼」或含「否則」的條件積木，必須同時檢查其內部執行序列。
+   - 若條件積木與其結束標記之間沒有任何積木，代表條件判斷是空殼，功能未實作。
    - 空殼條件判斷不可給分，必須視為「未完成」並扣分。
 
 C. 分身效能鐵律：
-   - 若題目要求「移除/消滅角色或分身」，必須找到 control_delete_this_clone（刪除分身）。
-   - 若學生僅使用 looks_hide（隱藏）或 motion_gotoxy 移至畫面外，這是會導致分身累積至上限（300個）而當機的錯誤寫法。
+   - 若題目要求「移除/消滅角色或分身」，必須找到「分身刪除」積木。
+   - 若學生僅使用「隱藏」或「定位到 x:y」移至畫面外，這是會導致分身累積至上限（300個）而當機的錯誤寫法。
    - 此情況必須在 deducted_items 中說明：「使用隱藏代替刪除分身，將導致效能崩潰」。
 
 D. 變數作用域鐵律：
@@ -590,7 +610,7 @@ D. 變數作用域鐵律：
 E. 替代方案積木鐵律（原生擴充 vs 老師自訂擴充）：
    - 資產清單中若出現「🔍 未知擴充積木偵測報告」，代表學生使用了非老師指定的擴充積木。
    - 判斷原則：「功能是否達成」優先於「積木來源是否正確」。
-   - 若學生使用平台原生積木（如 Scratch 內建 text2speech_、TurboWarp 原生 TTS）達到相同功能效果，
+   - 若學生使用平台原生積木（如 Scratch 內建「文字轉語音」、TurboWarp 原生 TTS）達到相同功能效果，
      視為「創意替代解法」，依功能完整度正常給分，不可因積木來源不同而扣分。
    - 必須在 creative_highlights 中標注：「使用平台原生 [擴充名稱] 替代老師自訂擴充，功能等效」。
    - 唯一例外：若老師的批改規則中明確指定「必須使用指定擴充積木」，則依老師規則優先。

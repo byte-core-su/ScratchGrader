@@ -1,5 +1,7 @@
 # ScratchGrader
 
+> 系統改寫來源：[makishi-ops/scratch-ai-grader](https://github.com/makishi-ops/scratch-ai-grader)
+
 ScratchGrader 是供 Scratch 教學使用的 AI 輔助批改系統。教師建立作業規則與參考解答後，學生可上傳自己的 `.sb3` 專案進行自評，系統會依教師規則產生分數、邏輯分析與可改進建議。
 
 ## 系統目的
@@ -306,3 +308,13 @@ window.SCRATCH_GRADER_API_URL = 'https://你的-ngrok-靜態網域.ngrok-free.ap
 3. 填寫他自己的 `.env`，或在 Colab 建立同名 Secrets。
 4. 只修改 `app-config.js` 中的公開 API 網址。
 5. 使用 `ScratchGrader_Secure_Colab.ipynb` 啟動並測試教師、學生兩個頁面。
+
+## 授權與開源宣言 (License)
+
+本專案基於「共創共好」的教育精神，採用 **GNU GPLv3** 授權條款。
+
+**開放與自由**：我們歡迎任何人、學校或商業機構自由使用、複製與修改本專案。我們相信，只要能讓這個教育工具變得更好，就不該限制它的發展。
+
+**開源傳染性限制**：若您修改了本系統並重新發布（包含將其包裝為付費服務或商業軟體），您必須以相同的 GPLv3 授權，公開您修改後的完整原始碼。我們期盼取之於社群的成果，最終能回饋給所有的第一線教師。
+
+**免責聲明**：本系統批改之評語與分數由 AI 自動生成，僅供教學輔助參考。請教師於正式登錄成績前，務必進行最終之確認與人工抽測。

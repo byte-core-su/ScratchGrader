@@ -2,6 +2,8 @@
 .env.*
 !.env.example
 grader_config.json
+grading_result_cache.json
+grading_result_cache.json.tmp
 service-account*.json
 firebase-adminsdk*.json
 *.pem

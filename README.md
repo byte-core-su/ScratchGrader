@@ -15,6 +15,8 @@ ScratchGrader 是供 Scratch 教學使用的 AI 輔助批改系統。教師建�
 - 直接解析 Scratch 專案結構、角色、背景、音效、變數與積木流程，再交由 Gemini 依規則評量。
 - 積木名稱使用 Scratch 官方繁體中文詞彙；未知的第三方擴充會被標示，不讓 AI 任意猜測。
 - 可選擇使用 Firestore 保存教師設定與學生自評紀錄；未啟用時只儲存在目前後端環境。
+- 將教師設定的分數門檻換成 0⭐／2⭐／3⭐ 學習成果，讓學生知道是否達成任務與下一步如何修改。
+- 評分期間持續顯示已等待時間、目前工作量與實測平均時間，減少學生因誤以為系統卡住而重複送出。
 - 教師端由 `ADMIN_TOKEN` 保護；公開專案不含任何帳號、金鑰或既有學生資料。
 
 ## 操作方式
@@ -30,7 +32,19 @@ ScratchGrader 是供 Scratch 教學使用的 AI 輔助批改系統。教師建�
 
 - `MAX_CONCURRENT_GRADES=3`：同時進行的 AI 評分數。免費 Colab 建議維持 2～3；效能與額度充足時才提高。
 - `MAX_QUEUED_GRADES=24`：最多可等待的評分數；佇列已滿時，學生會收到稍後再試的訊息。
+- 後端會保存最近 20 次成功評分的實測處理時間。學生等待時會看到已等待時間、目前工作量與平均時間；剛啟動、尚未有樣本時會清楚標示為尚在累積資料，而不會假裝提供精準倒數。
+- 教師端的連線區也會顯示這次 Colab 工作階段的平均秒數、樣本數與目前佇列狀態，方便課後據以調整模型、冷卻秒數與同時評分數。此統計為執行期資料，重啟 Colab 後會重新累積。
 - 評分工作仍受模型回應時間與帳號額度影響；此佇列控制併發，不保證固定完成時間。
+
+### 學習成果門檻
+
+評分流程參考 [course_115 的程式設計評分設計](https://github.com/su-yung-sheng/course_115)：AI 回傳分數後，由系統依教師設定的固定門檻換算成果，而不是再交給 AI 主觀決定是否通關。
+
+- 未達「達成門檻」：`0⭐`，顯示待修正與 AI 的具體建議。
+- 達成門檻以上：`2⭐`，表示已達成本次任務。
+- 優秀門檻以上：`3⭐`，表示表現優秀。
+
+這是單次作業的成果回饋，不會鎖住學生、也不會禁止重新送件；每次送件仍會記錄，供教師追蹤修改歷程。
 
 ## 系統架構與檔案
 
@@ -98,14 +112,28 @@ service cloud.firestore {
 
 > API key 會依部署方式保存在 Firestore 或目前的後端設定檔。若是共用教學環境，建議為每個班級或測試環境建立獨立 key，以便停用與用量管理。
 
-#### 免費額度優先：建議使用 Gemma
+#### 即時線上回饋：建議使用付費 Gemini 2.5 Flash
 
-如果帳號提供的 Gemma 免費額度高於 Gemini，建議在教師頁面的模型清單中優先選擇可用的 Gemma 模型。ScratchGrader 的評分內容以文字分析、規準比對與繁中回饋為主，先以 Gemma 維持免費使用是合理的部署策略。
+本專案的即時學生回饋預設使用 `gemini-2.5-flash` 搭配付費帳號。它適合需要較快、較穩定回覆的課堂情境；模型名稱不寫死，教師仍可在頁面載入自己 API key 可用的模型後更換。
 
-- 請以教師頁面載入的模型清單為準；系統只會列出這把 API key 可用、且支援文字生成的 `gemma`／`gemini` 模型。
-- 請用 10～20 份具代表性的 `.sb3` 作業，確認分數、官方繁中用語與改善建議符合教師規準後，再固定該模型。
-- 若目標是零成本運作，請不要設定「Gemma 失敗時自動改用 Gemini」的備援，避免超出免費額度而產生費用。
-- 模型與免費額度會隨帳號、地區及供應商方案變動；若清單中沒有 Gemma，請改用當下可用的免費模型或調整部署方案。
+- 課堂正式使用時，建議先選 `gemini-2.5-flash`，並維持評分佇列與冷卻秒數，避免全班同時送出時造成額度或等待問題。
+- Gemma 可作為成本優先、測試或非即時情境的替代方案；是否採用應以實際作業的回覆時間、評分一致性與帳號額度測試決定。
+- 後續會依實際班級的評分時間、成功率、等待佇列長度與 API 用量資料，調整模型、`MAX_CONCURRENT_GRADES` 與每份冷卻秒數。
+
+#### Claude 付費備援與同作品一致性（選用）
+
+本系統預設**不會**呼叫 Claude。只有部署者在 Colab Secrets／自己的 `.env` 同時設定 `ANTHROPIC_FALLBACK_ENABLED=true` 與 `ANTHROPIC_API_KEY` 後，才會在 Gemini 回傳 **503**，或連續兩次 **500** 時改由 `claude-haiku-4-5-20251001` 備援評分；`429` 額度限制及一般錯誤不會自動花費 Claude 額度。
+
+- 學生正式送出的作品，會依「作品邏輯 + 作業規則 + 範本／參考解答 + 評分政策版本」保存**第一次完成的結果**。同一份作品重送時會回傳該正式結果，不因 Gemini／Claude 切換而重新抽分。
+- 教師「單檔試評」刻意不使用快取，方便反覆修正規則與校準；因此不應把試評分數當作學生正式成績。
+- 教師成績紀錄與單檔試評會標示評分引擎、是否使用 Claude 備援、是否命中首次結果快取，便於人工覆核。
+- 修改評分規則、主題、範本或參考解答會自動形成新的快取範圍；若需刻意讓所有舊結果失效，將 `GRADING_POLICY_VERSION` 加一後重啟後端。
+
+Claude 備援會產生費用。請先確認 Anthropic 帳號的額度與預算，並僅將 `ANTHROPIC_API_KEY` 放入部署端 Secret，絕不可填入教師頁、學生頁或 `app-config.js`。
+
+#### 建議的評分校準方式
+
+每次建立新作業規則、改用不同模型，或啟用 Claude 備援後，請用教師端「單檔試評」各測一次：完整作品（90–100／3⭐）、少一項規則的作品、明顯未完成作品（低於 75／0⭐）、外觀相似但邏輯錯誤作品（低於 75／0⭐）。重點是確認及格門檻不會翻轉；5–10 分的細微差異需由教師依課程需求判斷。這項流程參考 [course_115 的程式設計評分說明](https://github.com/su-yung-sheng/course_115)。
 
 ### 2. ngrok 公開網址（必要）
 
@@ -161,6 +189,9 @@ FIREBASE_SERVICE_ACCOUNT_FILE=service-account.json
 | `NGROK_STATIC_DOMAIN` | 必要 | 你的 ngrok 靜態網域 |
 | `NGROK_API_KEY` | 建議 | 自動釋放同網域舊 tunnel session 的管理 API key |
 | `NGROK_REMOTE_RECOVERY` | 選用 | `true` 時啟用精準的遠端復原，預設為 `true` |
+| `ANTHROPIC_FALLBACK_ENABLED` | 選用 | 設為 `true` 才允許 Gemini 容量／內部錯誤時使用 Claude 付費備援 |
+| `ANTHROPIC_API_KEY` | Claude 備援時必要 | Anthropic API key；只放在 Colab Secret，不可放在網頁或 Git |
+| `ANTHROPIC_MODEL` | 選用 | 備援模型，預設 `claude-haiku-4-5-20251001` |
 | `ADMIN_TOKEN` | 必要 | 自行產生的長隨機教師管理密碼 |
 | `FIREBASE_ENABLED` | 選用 | 使用 Firestore 時填 `true` |
 | `FIREBASE_PROJECT_ID` | Firestore 時必要 | Firebase 專案 ID |
@@ -188,7 +219,7 @@ window.SCRATCH_GRADER_API_URL = 'https://你的靜態網域.ngrok-free.app';
 先將 `scratch_grader_core.py` 與 `colab_server.py` 上傳到同一個 Colab 工作階段，並安裝相依套件：
 
 ```python
-!pip install -q flask flask-cors pyngrok pandas google-genai google-auth python-dotenv
+!pip install -q flask flask-cors pyngrok pandas google-genai anthropic google-auth python-dotenv
 ```
 
 在 Colab 的 Secrets 設定下列值：
@@ -201,6 +232,7 @@ for name in [
     'NGROK_AUTHTOKEN', 'NGROK_STATIC_DOMAIN', 'ADMIN_TOKEN',
     'FIREBASE_ENABLED', 'FIREBASE_PROJECT_ID',
     'FIREBASE_SERVICE_ACCOUNT_JSON',
+    'ANTHROPIC_FALLBACK_ENABLED', 'ANTHROPIC_API_KEY', 'ANTHROPIC_MODEL',
 ]:
     try:
         value = userdata.get(name)
@@ -259,6 +291,12 @@ copy .env.example .env
 | `CORS_ALLOWED_ORIGINS` | `*` | `.env` 或 Colab Secret | 可呼叫 API 的前端網址，多個網址以逗號分隔。正式發布務必填入確切的 HTTPS 網址；本機 `file://` 測試才使用 `*`。 |
 | `MAX_CONCURRENT_GRADES` | `3` | `.env` 或 Colab Secret | 同時 AI 評分數。15 人班級和免費 Colab 建議 `2`～`3`；提高會加快處理，但更容易碰到模型額度與 Colab 資源限制。 |
 | `MAX_QUEUED_GRADES` | `24` | `.env` 或 Colab Secret | 最多等待中的 AI 評分數。15 人班級可維持 `24`；超過時學生會收到稍後再試。 |
+| `GRADE_RESULT_CACHE_ENABLED` | `true` | `.env` 或 Colab Secret | 學生正式評分是否保存同作品的首次完成結果。正式教學建議維持 `true`，避免重送改分。教師試評不受此設定影響。 |
+| `GRADE_RESULT_CACHE_PATH` | `grading_result_cache.json` | `.env` | 未啟用／無法連線 Firestore 時，本機首次結果快取位置；已被 Git 忽略。Colab 重啟後是否保留取決於 runtime。 |
+| `GRADING_POLICY_VERSION` | `1` | `.env` 或 Colab Secret | 手動提升此值可讓所有既有正式評分重新計算；通常只要改規則，系統已會自動使用新的快取範圍。 |
+| `ANTHROPIC_FALLBACK_ENABLED` | `false` | `.env` 或 Colab Secret | 設 `true` 且存在有效 Anthropic key 後，才允許 Claude 付費備援。預設關閉。 |
+| `ANTHROPIC_API_KEY` | 空白 | **僅 Colab Secret**／本機 `.env` | Claude 備援的祕密金鑰；不可填在教師頁、HTML、`app-config.js` 或 Git。 |
+| `ANTHROPIC_MODEL` | `claude-haiku-4-5-20251001` | `.env` 或 Colab Secret | Claude 備援模型。修改後應重做四份校準作品。 |
 | `CONFIG_PATH` | `grader_config.json` | `.env` | 未使用或無法連線 Firestore 時的本機設定檔位置。此模式隨 Colab 重啟可能遺失。 |
 
 ### Firestore 資料保存參數
@@ -270,6 +308,7 @@ copy .env.example .env
 | `FIREBASE_CONFIG_COLLECTION` | `scratchgrader` | `.env` | 教師共用設定所在集合名稱。多班級共用同一個 Firestore 時可改為不同名稱以隔離資料。 |
 | `FIREBASE_CONFIG_DOCUMENT` | `config` | `.env` | 教師共用設定文件名稱。不同班級應使用不同名稱，避免最後儲存者覆蓋其他班級設定。 |
 | `FIREBASE_SUBMISSIONS_COLLECTION` | `scratchgrader_submissions` | `.env` | 學生自評紀錄集合名稱；可依班級改名隔離。 |
+| `FIREBASE_RESULTS_COLLECTION` | `scratchgrader_results` | `.env` | 正式評分首次結果快取集合；啟用 Firestore 時可跨 Colab 重啟保留，避免同作品重送改分。 |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | 空白 | **僅 Colab Secret** | 完整服務帳戶 JSON。不可寫入 `.env`、HTML 或 GitHub。 |
 | `FIREBASE_SERVICE_ACCOUNT_FILE` | 空白 | 本機 `.env` | 服務帳戶 JSON 的本機路徑；檔案必須保留在版控之外。 |
 | `GOOGLE_APPLICATION_CREDENTIALS` | 空白 | 本機 `.env` | `FIREBASE_SERVICE_ACCOUNT_FILE` 的替代方案，填入服務帳戶 JSON 路徑。 |
@@ -280,13 +319,15 @@ copy .env.example .env
 
 | 設定 | 如何調整 | 影響範圍 |
 | --- | --- | --- |
-| API Key 1／2 | 在教師頁輸入自己的 Generative AI API key | 用於取得 Gemini／Gemma 模型清單與進行評分。使用免費 Gemma 時，請在模型清單選擇帳號實際可用的 Gemma。 |
-| 評分模型 | 按「載入可用模型」後選擇 | 預設為 `gemini-2.5-flash`；免費額度優先時可選擇清單中的 Gemma。不要設定自動切換到付費模型。 |
-| 每份冷卻秒數 | 教師頁調整，預設 `13` 秒 | 全系統每次開始呼叫 AI 前至少間隔的秒數。免費 Gemma 建議維持 `10`～`15`；額度充足且模型穩定時才降低。 |
+| API Key 1／2 | 在教師頁輸入自己的付費 Generative AI API key | 用於取得模型清單與進行即時評分。請勿公開或放入前端程式。 |
+| 評分模型 | 按「載入可用模型」後選擇 | 預設、建議值為 `gemini-2.5-flash`，適合課堂即時回饋；Gemma 可作為成本優先的替代方案。 |
+| 每份冷卻秒數 | 教師頁調整，預設 `13` 秒 | 全系統每次開始呼叫 AI 前至少間隔的秒數。付費 `gemini-2.5-flash` 先維持 `5`～`13` 秒，之後依實際成功率與用量資料調整。 |
+| 達成門檻／優秀門檻 | 教師頁調整，預設 `75`／`90` 分 | 分別換算為 2⭐／3⭐；低於達成門檻為 0⭐。優秀門檻不得低於達成門檻。 |
 | 作業主題與評分規則 | 直接編輯，或用參考解答產生後再審閱 | 決定 AI 依據什麼標準評分；教師修改後必須按「儲存設定」才會提供給學生。 |
 | 初始範本與參考解答 `.sb3` | 上傳後轉成虛擬碼並儲存 | 可讓評分依指定範本／解答比較。 |
 | 是否依標準答案評分 | 教師頁勾選 | 勾選時重視是否符合參考解答；取消時較著重教師規則與創意。 |
 | 是否向學生顯示分數 | 教師頁勾選 | 取消後仍會記錄真實分數（Firestore 啟用時），但學生只看到分析與建議。 |
+| 是否向學生顯示任務成果 | 教師頁勾選 | 可獨立決定是否顯示 0⭐／2⭐／3⭐ 與是否達成；即使隱藏分數，也可保留明確的學習成果回饋。 |
 | 最大 `.sb3` 解析大小 | 教師頁調整，預設 `10 MB` | 限制 Scratch 專案內 `project.json` 的解析大小；一般作業維持預設即可。 |
 
 Gemini／Gemma API key 不放在 `.env`，而是由教師登入教師頁面後輸入並保存於後端設定。請使用新的 key，並在 Google Cloud Console 限制其 API 與使用來源。

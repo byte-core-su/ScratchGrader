@@ -21,7 +21,7 @@ Scratch 作業 AI 批改系統 — 後端 API 伺服器（在 Google Colab 執�
 ──────────────────────────────────────────────────────────────
 
 # ===== SETUP（請在 Colab 另一個儲存格先跑一次）=====
-# !pip install -q flask flask-cors pyngrok pandas google-genai
+# !pip install -q flask flask-cors pyngrok pandas google-genai anthropic google-auth python-dotenv
 # ===================================================
 # 說明：本版本不掛載 Google Drive。設定檔與批改報告皆存在 Colab 本機，
 #       全班批改時請把學生作業資料夾直接上傳到 Colab（例：/content/作業）。
@@ -110,10 +110,10 @@ def _storage_status_from_save_location(saved_to):
     }
 
 
-def _run_grading_job(path, config):
+def _run_grading_job(path, config, use_cache=True):
     """Queue CPU/API-heavy grading so a class cannot overwhelm one Colab runtime."""
     return grading_queue.submit(
-        lambda: core.grade_project_file(path, config),
+        lambda: core.grade_project_file(path, config, use_cache=use_cache),
         start_cooldown_seconds=config.get("delay_seconds", 13),
     )
 
@@ -149,15 +149,19 @@ def index():
             "POST /api/teacher/test",
             "GET  /api/teacher/submissions",
             "GET  /api/student/config",
+            "GET  /api/student/queue",
             "POST /api/student/grade",
         ],
         "grading_queue": grading_queue.stats(),
+        "anthropic_fallback": core.anthropic_fallback_status(),
     })
 
 
 @app.route("/api/health")
 def health():
-    return jsonify({"ok": True, "version": SERVER_VERSION})
+    return jsonify({"ok": True, "version": SERVER_VERSION,
+                    "grading_queue": grading_queue.stats(),
+                    "anthropic_fallback": core.anthropic_fallback_status()})
 
 
 # ==========================================
@@ -170,7 +174,8 @@ def teacher_get_config():
         return guard
     cfg = core.load_config(CONFIG_PATH)
     return jsonify({"ok": True, "config": cfg,
-                    "storage": core.config_storage_status()})
+                    "storage": core.config_storage_status(),
+                    "anthropic_fallback": core.anthropic_fallback_status()})
 
 
 @app.route("/api/teacher/config", methods=["POST"])
@@ -282,7 +287,9 @@ def teacher_test():
 
     path = _save_upload_to_temp(request.files["file"])
     try:
-        result, queue_info = _run_grading_job(path, cfg)
+        # 校準試評必須每次重新呼叫模型，不使用學生正式成績的首次結果快取。
+        result, queue_info = _run_grading_job(path, cfg, use_cache=False)
+        result = core.add_assessment(result, cfg)
         return jsonify({"ok": True, "result": result, "queue": queue_info})
     except GradingQueueFull:
         return jsonify({"ok": False,
@@ -307,6 +314,14 @@ def student_config():
     return jsonify({"ok": True, "config": core.public_config(cfg)})
 
 
+@app.route("/api/student/queue", methods=["GET"])
+def student_queue():
+    """Public, non-identifying queue telemetry for the student waiting message."""
+    stats = grading_queue.stats()
+    stats["pending"] = stats["active"] + stats["waiting"]
+    return jsonify({"ok": True, **stats})
+
+
 @app.route("/api/student/grade", methods=["POST"])
 def student_grade():
     if "file" not in request.files:
@@ -323,18 +338,29 @@ def student_grade():
     path = _save_upload_to_temp(request.files["file"])
     try:
         result, queue_info = _run_grading_job(path, cfg)
+        result = core.add_assessment(result, cfg)
         # 先用「真實分數」記錄到 Firestore（不受學生端顯示設定影響）
-        core.record_submission(student_id, result, theme=cfg.get("theme", ""))
+        # 服務失敗不是 0 分作品；不可將它寫入正式成績紀錄。
+        if not result.get("grading_error"):
+            core.record_submission(student_id, result, theme=cfg.get("theme", ""))
         # 依老師設定決定是否對學生顯示分數
         if not cfg.get("student_show_score", True):
             result = dict(result)
             result["score"] = None
+        if not cfg.get("student_show_achievement", True):
+            result = dict(result)
+            result.pop("assessment", None)
+        # 模型與快取資訊只供教師查核，不提供給學生端。
+        for internal_key in ("grading_provider", "grading_model", "fallback_used",
+                             "grading_cached", "grading_policy_hash", "grading_error"):
+            result.pop(internal_key, None)
         # 學生端不需要看到內部虛擬碼，移除以精簡回傳
         result.pop("clean_code", None)
         return jsonify({"ok": True, "result": result,
                         "student_id": student_id,
                         "theme": cfg.get("theme", ""),
                         "show_score": cfg.get("student_show_score", True),
+                        "show_achievement": cfg.get("student_show_achievement", True),
                         "queue": queue_info})
     except GradingQueueFull:
         return jsonify({"ok": False,

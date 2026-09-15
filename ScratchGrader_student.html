@@ -111,7 +111,7 @@ const SERVER_URL = window.SCRATCH_GRADER_API_URL || new URLSearchParams(location
 const $ = id => document.getElementById(id);
 const base = () => SERVER_URL;
 const H = {'ngrok-skip-browser-warning':'true'};
-let chosen=null, showScore=true;
+let chosen=null, showScore=true, showAchievement=true, gradingProgressTimer=null;
 function setLight(state,text){ $('dot').className='dot '+state; $('connText').textContent=text; }
 
 // 拖放與選檔
@@ -127,6 +127,41 @@ function pick(f){
   chosen=f; $('fileName').textContent='✅ '+f.name; $('gradeBtn').disabled=false; setStatus('');
 }
 function setStatus(m,c){ const e=$('status'); e.textContent=m; e.className='status '+(c||''); }
+function fmtDuration(value){
+  const sec=Math.max(0,Math.ceil(Number(value)||0));
+  if(sec<60) return '約 '+Math.ceil(sec/5)*5+' 秒';
+  return '約 '+Math.ceil(sec/60)+' 分鐘';
+}
+async function readQueue(){
+  const r=await fetch(base()+'/api/student/queue',{headers:H,cache:'no-store'});
+  const j=await r.json();
+  if(!j.ok) throw new Error('queue unavailable');
+  return j;
+}
+function startGradingProgress(){
+  const startedAt=Date.now();
+  const update=async()=>{
+    const elapsed=Math.round((Date.now()-startedAt)/1000);
+    try{
+      const q=await readQueue();
+      const pending=Math.max(1,Number(q.pending)||1);
+      const avg=Number(q.avg_seconds)||0;
+      const isLate=avg>0 && elapsed>avg*1.3;
+      const timeText=avg>0
+        ? (isLate ? `已等待 ${fmtDuration(elapsed)}，比平常久一點（AI 仍在檢查，沒有當掉）`
+                  : `已等待 ${fmtDuration(elapsed)}，一般約需 ${fmtDuration(avg)}`)
+        : `已等待 ${fmtDuration(elapsed)}（正在累積本次課堂的實測時間）`;
+      setStatus(`🧠 AI 助教正在檢查你的積木…${timeText}。目前有 ${pending} 份作業處理中或等候中，請不要重複送出。`,'busy');
+    }catch(e){
+      setStatus(`🧠 AI 助教正在檢查你的積木…已等待 ${fmtDuration(elapsed)}（暫時問不到進度，請再等一下）。`,'busy');
+    }
+  };
+  update();
+  gradingProgressTimer=setInterval(update,4000);
+}
+function stopGradingProgress(){
+  if(gradingProgressTimer){ clearInterval(gradingProgressTimer); gradingProgressTimer=null; }
+}
 
 // 載入任務資訊 + 自動偵測連線（紅/綠燈）
 async function loadTask(){
@@ -136,6 +171,7 @@ async function loadTask(){
     const j=await r.json();
     if(j.ok){
       const c=j.config; showScore=c.student_show_score!==false;
+      showAchievement=c.student_show_achievement!==false;
       $('themeText').textContent=c.theme||'（老師尚未設定作業主題）';
       $('rulesText').textContent=c.rules?('評分重點：\n'+c.rules):'';
       if(!c.has_api_key){
@@ -157,34 +193,37 @@ async function grade(){
   if(!chosen) return;
   const sid=$('studentId').value.trim();
   if(!sid){ setStatus('請先輸入你的學號！','err'); $('studentId').focus(); return; }
-  $('gradeBtn').disabled=true; setStatus('🧠 AI 助教正在仔細檢查你的積木...','busy');
+  $('gradeBtn').disabled=true;
   const fd=new FormData(); fd.append('file',chosen); fd.append('student_id',sid);
+  startGradingProgress();
   try{
     const r=await fetch(base()+'/api/student/grade',{method:'POST',headers:H,body:fd});
     const j=await r.json();
+    stopGradingProgress();
     if(!j.ok){ setStatus('❌ '+(j.error||'自評失敗'),'err'); $('gradeBtn').disabled=false; return; }
     render(j.result);
     const queuedAhead=(j.queue&&j.queue.queued_ahead)||0;
     setStatus(queuedAhead ? ('✅ 評分完成（送出時前方有 '+queuedAhead+' 份作業排隊）') : '✅ 評分完成','ok');
-  }catch(e){ setStatus('❌ '+e.message,'err'); $('gradeBtn').disabled=false; }
+  }catch(e){ stopGradingProgress(); setStatus('❌ '+e.message,'err'); $('gradeBtn').disabled=false; }
 }
 
 function render(d){
   $('resultCard').style.display='block';
   const sc = (d.score===null||d.score===undefined)?null:d.score;
+  const a=showAchievement ? d.assessment : null;
   if(sc===null || !showScore){
-    $('scoreNum').textContent='✓';
-    $('stars').textContent=''; $('scoreBar').style.width='100%';
+    $('scoreNum').textContent=a ? a.stars+'⭐' : '✓';
+    $('stars').textContent=a ? (a.stars ? '★'.repeat(a.stars) : '☆☆☆') : '';
+    $('scoreBar').style.width='100%';
     $('scoreBar').style.background='var(--bg1)';
-    $('scoreMsg').textContent='已完成檢查！看看下方助教的回饋吧。';
+    $('scoreMsg').textContent=a ? a.message : '已完成檢查！看看下方助教的回饋吧。';
   }else{
     const pct=Math.max(0,Math.min(100,sc));
-    let color=sc>=90?'var(--ok)':sc>=70?'var(--warn)':'var(--err)';
+    let color=a&&a.level==='excellent'?'var(--ok)':a&&a.is_passed?'var(--warn)':'var(--err)';
     $('scoreNum').textContent=sc+' 分'; $('scoreNum').style.color=color;
-    const full=Math.round(pct/20);
-    $('stars').textContent='★'.repeat(full)+'☆'.repeat(5-full);
+    $('stars').textContent=a ? (a.stars ? '★'.repeat(a.stars) : '☆☆☆') : '';
     setTimeout(()=>{ $('scoreBar').style.width=pct+'%'; $('scoreBar').style.background=color; },80);
-    $('scoreMsg').textContent = sc>=90?'太厲害了，幾乎完美！🎉':sc>=70?'不錯喔，再補強一下就更棒了！💪':sc>=60?'及格了！還有進步空間，加油！':'再挑戰一次，你可以的！🔥';
+    $('scoreMsg').textContent=a ? a.message : '已完成檢查！看看下方助教的回饋吧。';
   }
   fill('secCreative','creativeText',d.creative_highlights);
   $('commentText').textContent=d.comments||'—';
@@ -197,6 +236,7 @@ function fill(sec,txt,val){
   if(!empty) $(txt).textContent=val;
 }
 function reset(){
+  stopGradingProgress();
   $('resultCard').style.display='none'; $('scoreBar').style.width='0';
   chosen=null; fi.value=''; $('fileName').textContent=''; $('gradeBtn').disabled=true;
   window.scrollTo({top:0,behavior:'smooth'});

@@ -69,6 +69,7 @@
     </div>
     <div class="status" id="connStatus"></div>
     <div class="status" id="storageStatus">ℹ️ 尚未確認資料保存位置</div>
+    <div class="status" id="queueStatus">ℹ️ 尚未取得本次 Colab 的評分實測資料</div>
   </div>
 
   <!-- 金鑰與模型 -->
@@ -91,6 +92,7 @@
       <div><label>每份冷卻秒數</label><input type="number" id="delaySeconds" value="13"></div>
       <div><label>單檔上限 (MB)</label><input type="number" id="maxSizeMb" value="10"></div>
     </div>
+    <div class="status" id="fallbackStatus">ℹ️ 尚未確認 Claude 付費備援是否啟用</div>
   </div>
 
   <!-- 作業與規則 -->
@@ -100,8 +102,14 @@
     <input type="text" id="theme" placeholder="例：迷宮闖關遊戲">
     <label>評分規則（老師設定的評分法律）</label>
     <textarea id="rules" rows="9" placeholder="逐條列出評分項目與配分..."></textarea>
+    <div class="row">
+      <div><label>達成門檻（分）</label><input type="number" id="passScore" value="75" min="0" max="110"></div>
+      <div><label>優秀門檻（分）</label><input type="number" id="excellenceScore" value="90" min="0" max="110"></div>
+    </div>
+    <div class="hint">低於達成門檻為 0⭐，達成為 2⭐，達到優秀門檻為 3⭐。這是學習成果提示，不會鎖住學生操作。</div>
     <div class="chk"><input type="checkbox" id="isStandard" checked><label style="margin:0" for="isStandard">標準答案題型（與參考解答一致即滿分；開放題請取消）</label></div>
     <div class="chk"><input type="checkbox" id="showScore" checked><label style="margin:0" for="showScore">學生自評時顯示分數</label></div>
+    <div class="chk"><input type="checkbox" id="showAchievement" checked><label style="margin:0" for="showAchievement">學生自評時顯示任務成果（⭐／是否達成）</label></div>
   </div>
 
   <!-- 範本與解答 -->
@@ -187,6 +195,25 @@ function showStorageStatus(storage){
   const prefix=isFirestore?'資料已保存到 Firestore：':'資料未保存到 Firestore：';
   setStatus('storageStatus',icon+' '+prefix+(storage.message||''),isFirestore?'ok':'busy');
 }
+function showQueueStatus(queue){
+  if(!queue){ setStatus('queueStatus','ℹ️ 尚未取得本次 Colab 的評分實測資料','busy'); return; }
+  const samples=Number(queue.samples)||0;
+  const active=Number(queue.active)||0;
+  const waiting=Number(queue.waiting)||0;
+  const avg=Number(queue.avg_seconds)||0;
+  const time=samples&&avg ? ('最近 '+samples+' 份平均 '+Math.ceil(avg)+' 秒') : '尚無完成樣本，平均時間會在第一份評分完成後出現';
+  setStatus('queueStatus','📊 本次 Colab 評分：'+time+'；目前 '+active+' 份處理中、'+waiting+' 份等候中。','ok');
+}
+function showFallbackStatus(fallback){
+  if(!fallback){ setStatus('fallbackStatus','ℹ️ 尚未確認 Claude 付費備援是否啟用','busy'); return; }
+  if(fallback.enabled){
+    setStatus('fallbackStatus','🛟 Claude 付費備援已啟用（'+(fallback.model||'Claude')+'）；僅在 '+(fallback.trigger||'指定錯誤')+' 時使用。','ok');
+  }else if(fallback.configured){
+    setStatus('fallbackStatus','⚠️ Claude 備援已設定但未偵測到 ANTHROPIC_API_KEY，不會切換或產生費用。','err');
+  }else{
+    setStatus('fallbackStatus','ℹ️ Claude 付費備援未啟用；目前只使用 Gemini。','busy');
+  }
+}
 function setLight(state,text){
   $('dot').className = 'dot '+state;   // on / off / wait
   $('connText').textContent = text;
@@ -201,6 +228,8 @@ async function autoDetect(){
     const j = await r.json();
     if(j.ok){
       setLight('on','🟢 伺服器已連線');
+      showQueueStatus(j.grading_queue);
+      showFallbackStatus(j.anthropic_fallback);
       if(!_autoLoaded){ _autoLoaded = true; loadConfig(); }  // 只自動載入一次，避免蓋掉編輯中的內容
     } else setLight('off','🔴 伺服器回應異常');
   }catch(e){ setLight('off','🔴 未連線（請確認 Colab 伺服器已啟動）'); }
@@ -216,6 +245,7 @@ async function loadConfig(){
     if(!j.ok){ setStatus('connStatus','❌ '+(j.error||'載入失敗'),'err'); return; }
     const c = j.config;
     showStorageStatus(j.storage);
+    showFallbackStatus(j.anthropic_fallback);
     // 只在伺服器確實有值時才回填金鑰，避免用空值蓋掉剛輸入的內容
     if(c.api_key_1) $('apiKey1').value=c.api_key_1;
     if(c.api_key_2) $('apiKey2').value=c.api_key_2;
@@ -229,9 +259,11 @@ async function loadConfig(){
       sel.value=c.model_name;
     }
     $('delaySeconds').value=c.delay_seconds ?? 13; $('maxSizeMb').value=c.max_size_mb ?? 10;
+    $('passScore').value=c.pass_score ?? 75; $('excellenceScore').value=c.excellence_score ?? 90;
     $('theme').value=c.theme||''; $('rules').value=c.rules||'';
     $('isStandard').checked=!!c.is_standard_answer;
     $('showScore').checked=c.student_show_score!==false;
+    $('showAchievement').checked=c.student_show_achievement!==false;
     window._templateCode=c.template_code||''; window._exampleCode=c.example_code||'';
     if(window._templateCode) setStatus('templateStatus','已載入設定檔中的範本虛擬碼','ok');
     if(window._exampleCode) setStatus('exampleStatus','已載入設定檔中的解答虛擬碼','ok');
@@ -289,7 +321,6 @@ async function suggestRules(){
       body:JSON.stringify({api_key_1:k1,api_key_2:k2,model_name:$('modelName').value,clean_code:window._exampleCode})});
     const j=await r.json();
     if(j.ok){
-      showStorageStatus(j.storage);
       $('theme').value=j.theme||''; $('rules').value=j.rules||'';
       setStatus('suggestStatus','✅ 已生成，請檢查/調整③的內容後再按「儲存設定」','ok');
     } else setStatus('suggestStatus','❌ '+(j.error||'生成失敗'),'err');
@@ -297,13 +328,19 @@ async function suggestRules(){
 }
 
 function gatherConfig(){
+  const passScore=Math.max(1,parseInt($('passScore').value)||75);
+  const excellenceScore=Math.max(passScore,parseInt($('excellenceScore').value)||90);
+  $('passScore').value=passScore; $('excellenceScore').value=excellenceScore;
   const cfg = {
     api_key_1:$('apiKey1').value.trim(), api_key_2:$('apiKey2').value.trim(),
     model_name:$('modelName').value, delay_seconds:parseInt($('delaySeconds').value)||13,
     max_size_mb:parseInt($('maxSizeMb').value)||10,
+    pass_score:passScore,
+    excellence_score:excellenceScore,
     theme:$('theme').value, rules:$('rules').value,
     is_standard_answer:$('isStandard').checked,
     student_show_score:$('showScore').checked,
+    student_show_achievement:$('showAchievement').checked,
     use_custom_extension:false, extension_rules:'',
     template_code:window._templateCode||'', example_code:window._exampleCode||'',
   };
@@ -334,7 +371,7 @@ async function testGrade(){
     const d=j.result;
     $('testResult').style.display='block';
     $('testResult').textContent=
-      `🎯 分數：${d.score}\n\n🧠 邏輯分析：\n${d.logic_analysis||'無'}\n\n`+
+      `🎯 分數：${d.score}\n🏁 成果：${d.assessment ? d.assessment.stars+'⭐ '+d.assessment.message : '—'}\n🤖 評分引擎：${d.grading_provider||'—'} / ${d.grading_model||'—'}${d.fallback_used?'（Claude 備援）':''}${d.grading_cached?'（首次結果快取）':''}\n\n🧠 邏輯分析：\n${d.logic_analysis||'無'}\n\n`+
       `💡 創意亮點：\n${d.creative_highlights||'無'}\n\n📝 講評：\n${d.comments||'無'}\n\n`+
       `📉 扣分項目：\n${d.deducted_items||'無'}`;
     setStatus('testStatus','✅ 試評完成（提醒：試評不會儲存，學生要能自評請回⑤按「儲存設定」）','ok');
@@ -351,11 +388,13 @@ async function loadSubmissions(){
     if(!j.ok){ setStatus('subStatus','❌ '+(j.error||'讀取失敗'),'err'); return; }
     const rows=j.submissions||[];
     if(!rows.length){ setStatus('subStatus','（目前尚無學生自評紀錄）','ok'); return; }
-    let h='<table><thead><tr><th>學號</th><th>分數</th><th>評測時間</th><th>作業主題</th></tr></thead><tbody>';
+    let h='<table><thead><tr><th>學號</th><th>分數</th><th>成果</th><th>評分引擎</th><th>評測時間</th><th>作業主題</th></tr></thead><tbody>';
     rows.forEach(r=>{
       const sc=(r.score===undefined||r.score===null||r.score===-1)?'—':r.score;
       const esc=s=>String(s??'').replace(/</g,'&lt;');
-      h+=`<tr><td class="sid">${esc(r.student_id)}</td><td style="font-weight:700">${sc}</td>`+
+      const achievement=r.stars===undefined ? '—' : (r.is_passed ? (Number(r.stars)||2)+'⭐ 達成' : '0⭐ 待修正');
+      const engine=r.grading_provider ? esc(r.grading_provider)+' / '+esc(r.grading_model||'')+(r.fallback_used?'（備援）':'')+(r.grading_cached?'（快取）':'') : '—';
+      h+=`<tr><td class="sid">${esc(r.student_id)}</td><td style="font-weight:700">${sc}</td><td>${achievement}</td><td>${engine}</td>`+
          `<td>${esc(r.created_at)}</td><td>${esc(r.theme)}</td></tr>`;
     });
     h+='</tbody></table>';

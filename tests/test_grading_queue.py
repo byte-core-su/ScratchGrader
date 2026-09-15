@@ -78,3 +78,10 @@ class GradingQueueTests(unittest.TestCase):
 
         self.assertEqual(len(started_at), 2)
         self.assertGreaterEqual(abs(started_at[1] - started_at[0]), 0.02)
+
+    def test_stats_include_recent_actual_grading_time(self):
+        queue = GradingQueue(max_concurrent=1, max_queued=1)
+        queue.submit(lambda: time.sleep(0.01))
+        stats = queue.stats()
+        self.assertEqual(stats["samples"], 1)
+        self.assertGreater(stats["avg_seconds"], 0)

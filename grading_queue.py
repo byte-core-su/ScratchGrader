@@ -5,6 +5,7 @@ import os
 import queue
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -33,6 +34,7 @@ class GradingQueue:
         self._lock = threading.Lock()
         self._pacing_lock = threading.Lock()
         self._next_start_at = 0.0
+        self._durations: deque[float] = deque(maxlen=20)
         for index in range(self.max_concurrent):
             threading.Thread(target=self._worker, name=f"scratch-grader-{index + 1}", daemon=True).start()
 
@@ -62,11 +64,14 @@ class GradingQueue:
     def stats(self) -> dict:
         with self._lock:
             active = self._active
+            durations = list(self._durations)
         return {
             "active": active,
             "waiting": self._tasks.qsize(),
             "max_concurrent": self.max_concurrent,
             "max_queued": self.max_queued,
+            "samples": len(durations),
+            "avg_seconds": round(sum(durations) / len(durations), 2) if durations else None,
         }
 
     def _worker(self):
@@ -76,7 +81,10 @@ class GradingQueue:
                 self._active += 1
             try:
                 self._wait_for_start_slot(task.start_cooldown_seconds)
+                started_at = time.monotonic()
                 task.result = task.work()
+                with self._lock:
+                    self._durations.append(time.monotonic() - started_at)
             except BaseException as exc:
                 task.error = exc
             finally:

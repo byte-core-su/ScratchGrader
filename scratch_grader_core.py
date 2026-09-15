@@ -23,6 +23,7 @@ import time
 import os
 import datetime
 import re  # 用於強健的 JSON 解析
+import threading
 
 try:
     from dotenv import load_dotenv
@@ -33,6 +34,8 @@ except ImportError:
 
 from google import genai
 from google.genai import types
+from grading_assessment import add_assessment
+from grading_policy import grading_policy_fingerprint, should_fallback_to_anthropic
 from scratch_translation import opcode_entry, project_opcode_coverage, render_official_block
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -623,6 +626,61 @@ F. 惡意指令隔離鐵律（防 Prompt Injection）：
 # ==========================================
 # 4. 單一 AI 批改核心 (✅ 接收擴充積木參數)
 # ==========================================
+class GeminiFallbackRequired(RuntimeError):
+    """Gemini 的服務狀態符合切換到付費備援模型的條件。"""
+
+
+def _result_error(message):
+    """對前端回傳不含供應商原始錯誤訊息的安全失敗結果。"""
+    return {
+        "score": 0,
+        "comments": message,
+        "deducted_items": "系統暫時無法完成評分",
+        "creative_highlights": "無",
+        "logic_analysis": "",
+        "grading_error": True,
+    }
+
+
+def anthropic_fallback_status():
+    """Safe status for the teacher UI; never expose the API key itself."""
+    enabled = os.getenv("ANTHROPIC_FALLBACK_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    has_key = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    return {
+        "enabled": enabled and has_key,
+        "configured": enabled,
+        "has_key": has_key,
+        "model": os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001").strip() or "claude-haiku-4-5-20251001",
+        "trigger": "Gemini 回傳 503，或連續兩次 500 時才切換",
+    }
+
+
+def _anthropic_grading(system_prompt, user_text):
+    """Use Claude only after the explicit Gemini fallback condition is reached."""
+    status = anthropic_fallback_status()
+    if not status["enabled"]:
+        return _result_error("Gemini 暫時無法完成評分；付費備援尚未啟用，請稍後再試。")
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", "").strip())
+        response = client.messages.create(
+            model=status["model"],
+            max_tokens=1400,
+            temperature=0,
+            system=system_prompt + "\n\n請只回傳 JSON 物件，欄位必須是 logic_analysis、creative_highlights、score、comments、deducted_items。",
+            messages=[{"role": "user", "content": user_text}],
+        )
+        text = "".join(getattr(part, "text", "") for part in response.content)
+        result = json.loads(extract_json_from_text(text), strict=False)
+        result["grading_provider"] = "anthropic"
+        result["grading_model"] = status["model"]
+        result["fallback_used"] = True
+        return result
+    except Exception as e:
+        print(f"[Anthropic] 備援評分失敗：{type(e).__name__}")
+        return _result_error("評分服務暫時無法完成，請稍後再試或通知教師。")
+
+
 def single_agent_grading(api_keys_raw, rules, theme, clean_code, template_code, example_code,
                           model_name, is_standard_answer,
                           use_custom_extension=False, extension_rules=""):
@@ -638,7 +696,7 @@ def single_agent_grading(api_keys_raw, rules, theme, clean_code, template_code, 
         api_keys.append(cleaned)
 
     if not api_keys:
-        return {"score": 0, "comments": "未提供有效的 API Key", "deducted_items": "錯誤", "creative_highlights": "無"}
+        return _result_error("老師尚未設定可用的 Gemini API Key。")
 
     # ✅ 傳入擴充積木參數
     system_prompt = generate_grading_prompt(
@@ -663,6 +721,7 @@ def single_agent_grading(api_keys_raw, rules, theme, clean_code, template_code, 
         nonlocal current_key_idx
         # 🚨 升級 4：指數退避策略 (Exponential Backoff)，增加重試輪數
         max_attempts = len(api_keys) * 2
+        consecutive_500 = 0
 
         for attempt in range(max_attempts):
             client = genai.Client(api_key=api_keys[current_key_idx % len(api_keys)])
@@ -684,29 +743,42 @@ def single_agent_grading(api_keys_raw, rules, theme, clean_code, template_code, 
                 )
 
                 json_str = extract_json_from_text(response.text.strip())
-                return json.loads(json_str, strict=False)
+                result = json.loads(json_str, strict=False)
+                result["grading_provider"] = "gemini"
+                result["grading_model"] = model_name
+                result["fallback_used"] = False
+                return result
 
             except json.JSONDecodeError as je:
                 raise Exception(f"模型產生了無效的 JSON 字串: {str(je)}")
             except Exception as e:
                 error_msg = str(e)
-                if "429" in error_msg or "503" in error_msg:
+                if "500" in error_msg:
+                    consecutive_500 += 1
+                else:
+                    consecutive_500 = 0
+                if should_fallback_to_anthropic(error_msg, consecutive_500):
+                    raise GeminiFallbackRequired(error_msg)
+                if "429" in error_msg:
                     if attempt < max_attempts - 1:
                         wait_time = 2 ** (attempt % 4 + 1) # 遞增等待 2, 4, 8 秒
-                        print(f"[系統] 遇到 429額度限制 或 503伺服器塞車！等待 {wait_time} 秒後切換或重試...")
+                        print(f"[系統] 遇到 429 額度限制，等待 {wait_time} 秒後切換或重試...")
                         current_key_idx = (current_key_idx + 1) % len(api_keys)
                         time.sleep(wait_time)
                         continue
                     else:
-                        raise Exception("所有 API Key 額度已耗盡或伺服器持續無回應！")
+                        raise Exception("所有 Gemini API Key 額度已耗盡或持續無回應")
                 raise Exception(f"API 錯誤 ({model_name}): {error_msg}")
 
     try:
         # 🚨 升級 3：使用  標籤隔離代碼防禦 Prompt Injection
         user_input_safe = f"[受測代碼]\n\n{clean_code}\n"
         return ask_agent(f"[助教指令]\n{system_prompt}", user_input_safe, temp=0.0)
+    except GeminiFallbackRequired:
+        return _anthropic_grading(system_prompt, user_input_safe)
     except Exception as e:
-        return {"score": 0, "comments": f"系統異常: {str(e)}", "deducted_items": "錯誤", "creative_highlights": "無"}
+        print(f"[Gemini] 評分失敗：{type(e).__name__}")
+        return _result_error("Gemini 暫時無法完成評分，請稍後再試或通知教師。")
 
 # ==========================================
 # 9. 共用設定檔（教師端存 → 學生端讀）
@@ -741,7 +813,13 @@ FIREBASE = {
     "config_collection": os.getenv("FIREBASE_CONFIG_COLLECTION", "scratchgrader").strip(),
     "config_doc": os.getenv("FIREBASE_CONFIG_DOCUMENT", "config").strip(),
     "submissions_collection": os.getenv("FIREBASE_SUBMISSIONS_COLLECTION", "scratchgrader_submissions").strip(),
+    "results_collection": os.getenv("FIREBASE_RESULTS_COLLECTION", "scratchgrader_results").strip(),
 }
+
+RESULT_CACHE_PATH = os.getenv("GRADE_RESULT_CACHE_PATH", "grading_result_cache.json")
+RESULT_CACHE_ENABLED = _env_bool("GRADE_RESULT_CACHE_ENABLED", True)
+_result_cache_lock = threading.Lock()
+_result_cache_key_locks = {}
 
 # 服務帳戶 JSON 請放在 Colab Secrets 的 FIREBASE_SERVICE_ACCOUNT_JSON；
 # 也可設定 FIREBASE_SERVICE_ACCOUNT_FILE 或 GOOGLE_APPLICATION_CREDENTIALS。
@@ -872,6 +950,88 @@ def config_storage_status():
         }
 
 
+def _local_cache_read():
+    if not RESULT_CACHE_PATH or not os.path.exists(RESULT_CACHE_PATH):
+        return {}
+    try:
+        with open(RESULT_CACHE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception as e:
+        print(f"[快取] 無法讀取本機評分結果快取：{type(e).__name__}")
+        return {}
+
+
+def _local_cache_write(data):
+    folder = os.path.dirname(RESULT_CACHE_PATH)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+    temporary_path = RESULT_CACHE_PATH + ".tmp"
+    with open(temporary_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(temporary_path, RESULT_CACHE_PATH)
+
+
+def get_cached_grade(cache_key):
+    """Read the canonical result, preferring Firestore for cross-restart storage."""
+    if not RESULT_CACHE_ENABLED:
+        return None
+    if FIREBASE.get("enabled"):
+        try:
+            doc = _fs_http("GET", _fs_url(f"{FIREBASE['results_collection']}/{cache_key}"))
+            encoded = _from_fs_fields(doc.get("fields", {})).get("result_json", "")
+            result = json.loads(encoded)
+            if isinstance(result, dict):
+                result["grading_cached"] = True
+                return result
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                print(f"[Firestore] 無法讀取評分結果快取：HTTP {e.code}")
+        except Exception as e:
+            print(f"[Firestore] 無法讀取評分結果快取：{type(e).__name__}")
+
+    entry = _local_cache_read().get(cache_key, {})
+    result = entry.get("result") if isinstance(entry, dict) else None
+    if isinstance(result, dict):
+        result = dict(result)
+        result["grading_cached"] = True
+        return result
+    return None
+
+
+def save_cached_grade(cache_key, result):
+    """Persist only completed assessments. Errors are never cached as a grade."""
+    if not RESULT_CACHE_ENABLED or not isinstance(result, dict) or result.get("grading_error"):
+        return
+    cached_result = dict(result)
+    cached_result.pop("clean_code", None)
+    cached_result["grading_cached"] = False
+    entry = {"result": cached_result, "created_at": _now_str()}
+
+    if FIREBASE.get("enabled"):
+        try:
+            record = {
+                "result_json": json.dumps(cached_result, ensure_ascii=False),
+                "created_at": entry["created_at"],
+                "grading_provider": cached_result.get("grading_provider", ""),
+                "grading_model": cached_result.get("grading_model", ""),
+            }
+            _fs_http("PATCH", _fs_url(f"{FIREBASE['results_collection']}/{cache_key}"),
+                     {"fields": _to_fs_fields(record)})
+            return
+        except Exception as e:
+            print(f"[Firestore] 無法保存評分結果快取，改存本機：{type(e).__name__}")
+
+    data = _local_cache_read()
+    data[cache_key] = entry
+    _local_cache_write(data)
+
+
+def _cache_lock_for(cache_key):
+    with _result_cache_lock:
+        return _result_cache_key_locks.setdefault(cache_key, threading.Lock())
+
+
 def record_submission(student_id, result, theme=""):
     """
     把一筆學生自評結果寫入 Firestore 的 submissions 集合（自動產生文件 ID）。
@@ -887,6 +1047,12 @@ def record_submission(student_id, result, theme=""):
         "creative_highlights": result.get("creative_highlights", ""),
         "deducted_items": result.get("deducted_items", ""),
         "logic_analysis": result.get("logic_analysis", ""),
+        "stars": (result.get("assessment") or {}).get("stars", 0),
+        "is_passed": (result.get("assessment") or {}).get("is_passed", False),
+        "grading_provider": result.get("grading_provider", ""),
+        "grading_model": result.get("grading_model", ""),
+        "fallback_used": bool(result.get("fallback_used", False)),
+        "grading_cached": bool(result.get("grading_cached", False)),
         "created_at": _now_str(),
     }
     try:
@@ -934,6 +1100,8 @@ DEFAULT_CONFIG = {
     "theme": "",
     "rules": "",
     "delay_seconds": 13,
+    "pass_score": 75,
+    "excellence_score": 90,
     "is_standard_answer": True,
     "use_custom_extension": False,
     "extension_rules": "",
@@ -941,6 +1109,8 @@ DEFAULT_CONFIG = {
     "template_code": "",     # 初始空白範本的虛擬碼（教師端上傳範本後存入）
     "example_code": "",      # 老師參考解答的虛擬碼（教師端上傳解答後存入）
     "student_show_score": True,   # 學生自評是否顯示分數
+    "student_show_achievement": True,  # 學生自評是否顯示通關成果
+    "grading_policy_version": os.getenv("GRADING_POLICY_VERSION", "1").strip() or "1",  # 手動提升即可使既有結果快取失效
     "admin_token": "",       # 教師端操作密碼（防止學生亂改設定）
     "updated_at": "",
 }
@@ -1011,7 +1181,7 @@ def public_config(config):
     return safe
 
 
-def grade_project_file(sb3_path, config):
+def grade_project_file(sb3_path, config, use_cache=True):
     """
     學生端 / 教師端試評共用：讀入單一 .sb3，依設定檔規則回傳評分結果 dict。
     金鑰取自設定檔（伺服器端），不需前端提供。
@@ -1035,18 +1205,29 @@ def grade_project_file(sb3_path, config):
     clean_code = clean_json_for_ai(raw)
     api_keys = [cfg.get("api_key_1", ""), cfg.get("api_key_2", "")]
 
-    res = single_agent_grading(
-        api_keys,
-        cfg.get("rules", ""),
-        cfg.get("theme", ""),
-        clean_code,
-        template_code=cfg.get("template_code", ""),
-        example_code=cfg.get("example_code", ""),
-        model_name=cfg.get("model_name", "gemini-2.5-flash"),
-        is_standard_answer=cfg.get("is_standard_answer", True),
-        use_custom_extension=cfg.get("use_custom_extension", False),
-        extension_rules=cfg.get("extension_rules", ""),
-    )
+    cache_key = grading_policy_fingerprint(clean_code, cfg)
+    res = get_cached_grade(cache_key) if use_cache else None
+    if res is None:
+        # 同一份作品同時送進佇列時，後到者會再次確認快取；因此只會有第一份真正呼叫模型。
+        with _cache_lock_for(cache_key):
+            res = get_cached_grade(cache_key) if use_cache else None
+            if res is None:
+                res = single_agent_grading(
+                    api_keys,
+                    cfg.get("rules", ""),
+                    cfg.get("theme", ""),
+                    clean_code,
+                    template_code=cfg.get("template_code", ""),
+                    example_code=cfg.get("example_code", ""),
+                    model_name=cfg.get("model_name", "gemini-2.5-flash"),
+                    is_standard_answer=cfg.get("is_standard_answer", True),
+                    use_custom_extension=cfg.get("use_custom_extension", False),
+                    extension_rules=cfg.get("extension_rules", ""),
+                )
+                res["grading_cached"] = False
+                res["grading_policy_hash"] = cache_key[:12]
+                if use_cache:
+                    save_cached_grade(cache_key, res)
     res["clean_code"] = clean_code
     return res
 

@@ -105,6 +105,7 @@
     <div class="row">
       <div><label>達成門檻（分）</label><input type="number" id="passScore" value="75" min="0" max="110"></div>
       <div><label>優秀門檻（分）</label><input type="number" id="excellenceScore" value="90" min="0" max="110"></div>
+      <div><label>關卡識別碼</label><input type="text" id="calibrationLevel" placeholder="例：unit-1-list"></div>
     </div>
     <div class="hint">低於達成門檻為 0⭐，達成為 2⭐，達到優秀門檻為 3⭐。這是學習成果提示，不會鎖住學生操作。</div>
     <div class="chk"><input type="checkbox" id="isStandard" checked><label style="margin:0" for="isStandard">標準答案題型（與參考解答一致即滿分；開放題請取消）</label></div>
@@ -147,13 +148,24 @@
     <div class="status" id="saveStatus"></div>
   </div>
 
-  <!-- 試評 -->
+  <!-- 試評與校正 -->
   <div class="card">
-    <h2>⑥ 單檔試評</h2>
-    <div class="hint">上傳一份 .sb3（例如參考解答）測試目前規則是否合理。會使用尚未儲存的即時設定。</div>
+    <h2>⑥ 每關試評與校正（必做）</h2>
+    <div class="hint">每個關卡先按⑤儲存設定，再用四份不同樣本各跑一次「校正並記錄」：完整解答、少一條規則、明顯未完成、外觀相似但邏輯錯。四項都符合預期分數前，學生端不能正式評分。</div>
     <input type="file" id="testFile" accept=".sb3">
-    <div class="btnbar"><button class="btn-ghost" onclick="testGrade()">▶️ 試評這份作業</button></div>
+    <div class="row">
+      <div><label>校正樣本類型</label><select id="calibrationCase" onchange="setCalibrationRange()">
+        <option value="complete">完整解答（預期 90～110）</option>
+        <option value="missing_rule">少一條規則（請依該項配分調整）</option>
+        <option value="incomplete">明顯未完成（預期 0～74）</option>
+        <option value="logic_trap">外觀相似但邏輯錯（預期 0～74）</option>
+      </select></div>
+      <div><label>期望最低分</label><input type="number" id="expectedMin" value="90" min="0" max="110"></div>
+      <div><label>期望最高分</label><input type="number" id="expectedMax" value="110" min="0" max="110"></div>
+    </div>
+    <div class="btnbar"><button class="btn-ghost" onclick="testGrade(false)">▶️ 一般試評</button><button class="btn-primary" onclick="testGrade(true)">🧪 校正並記錄此樣本</button></div>
     <div class="status" id="testStatus"></div>
+    <div class="status" id="calibrationStatus">ℹ️ 尚未讀取本關校正狀態</div>
     <pre id="testResult" style="display:none"></pre>
   </div>
 
@@ -214,6 +226,21 @@ function showFallbackStatus(fallback){
     setStatus('fallbackStatus','ℹ️ Claude 付費備援未啟用；目前只使用 Gemini。','busy');
   }
 }
+const CALIBRATION_LABELS={complete:'完整解答',missing_rule:'少一條規則',incomplete:'明顯未完成',logic_trap:'邏輯錯誤'};
+function showCalibrationStatus(calibration){
+  if(!calibration){ setStatus('calibrationStatus','ℹ️ 尚未讀取本關校正狀態','busy'); return; }
+  if(!calibration.required){ setStatus('calibrationStatus','ℹ️ 此部署已關閉校正保護；不建議用於正式課堂。','busy'); return; }
+  if(calibration.ready){ setStatus('calibrationStatus','✅ 關卡「'+(calibration.level_id||'未命名')+'」已完成四項校正，可開放學生正式評分。','ok'); return; }
+  const done=(calibration.passed_cases||[]).map(x=>CALIBRATION_LABELS[x]||x).join('、')||'尚無';
+  const missing=(calibration.missing_cases||[]).map(x=>CALIBRATION_LABELS[x]||x).join('、')||'—';
+  const changed=calibration.current_policy===false ? '規則、模型或提示版本已變更，需重新校正。' : '';
+  setStatus('calibrationStatus','⚠️ 尚未可開放：已通過 '+done+'；仍需 '+missing+'。'+changed,'busy');
+}
+function setCalibrationRange(){
+  const ranges={complete:[90,110],missing_rule:[75,89],incomplete:[0,74],logic_trap:[0,74]};
+  const range=ranges[$('calibrationCase').value]||[0,110];
+  $('expectedMin').value=range[0]; $('expectedMax').value=range[1];
+}
 function setLight(state,text){
   $('dot').className = 'dot '+state;   // on / off / wait
   $('connText').textContent = text;
@@ -246,6 +273,7 @@ async function loadConfig(){
     const c = j.config;
     showStorageStatus(j.storage);
     showFallbackStatus(j.anthropic_fallback);
+    showCalibrationStatus(j.calibration);
     // 只在伺服器確實有值時才回填金鑰，避免用空值蓋掉剛輸入的內容
     if(c.api_key_1) $('apiKey1').value=c.api_key_1;
     if(c.api_key_2) $('apiKey2').value=c.api_key_2;
@@ -260,6 +288,7 @@ async function loadConfig(){
     }
     $('delaySeconds').value=c.delay_seconds ?? 13; $('maxSizeMb').value=c.max_size_mb ?? 10;
     $('passScore').value=c.pass_score ?? 75; $('excellenceScore').value=c.excellence_score ?? 90;
+    $('calibrationLevel').value=c.calibration_level||'';
     $('theme').value=c.theme||''; $('rules').value=c.rules||'';
     $('isStandard').checked=!!c.is_standard_answer;
     $('showScore').checked=c.student_show_score!==false;
@@ -343,6 +372,7 @@ function gatherConfig(){
     student_show_achievement:$('showAchievement').checked,
     use_custom_extension:false, extension_rules:'',
     template_code:window._templateCode||'', example_code:window._exampleCode||'',
+    calibration_level:$('calibrationLevel').value.trim(),
   };
   return cfg;
 }
@@ -355,15 +385,24 @@ async function saveConfig(){
     const j = await r.json();
     if(j.ok){
       setStatus('saveStatus','✅ 已儲存（'+j.updated_at+'）→ '+j.saved_to,'ok');
+      showCalibrationStatus(j.calibration);
     } else setStatus('saveStatus','❌ '+(j.error||'儲存失敗'),'err');
   }catch(e){ setStatus('saveStatus','❌ '+e.message,'err'); }
 }
 
-async function testGrade(){
+async function testGrade(recordCalibration=false){
   const f=$('testFile').files[0];
   if(!f){ setStatus('testStatus','請先選擇檔案','err'); return; }
-  setStatus('testStatus','AI 試評中，請稍候...','busy');
-  const fd=new FormData(); fd.append('file',f); fd.append('overrides',JSON.stringify(gatherConfig()));
+  if(recordCalibration && !$('calibrationLevel').value.trim()){
+    setStatus('testStatus','請先填寫關卡識別碼，按⑤儲存設定後再進行校正','err'); return;
+  }
+  setStatus('testStatus',recordCalibration?'校正試評中，請稍候...':'AI 試評中，請稍候...','busy');
+  const fd=new FormData(); fd.append('file',f);
+  if(recordCalibration){
+    fd.append('calibration_case',$('calibrationCase').value);
+    fd.append('expected_min',$('expectedMin').value);
+    fd.append('expected_max',$('expectedMax').value);
+  }else fd.append('overrides',JSON.stringify(gatherConfig()));
   try{
     const r=await fetch(base()+'/api/teacher/test',{method:'POST',headers:headers(),body:fd});
     const j=await r.json();
@@ -374,7 +413,11 @@ async function testGrade(){
       `🎯 分數：${d.score}\n🏁 成果：${d.assessment ? d.assessment.stars+'⭐ '+d.assessment.message : '—'}\n🤖 評分引擎：${d.grading_provider||'—'} / ${d.grading_model||'—'}${d.fallback_used?'（Claude 備援）':''}${d.grading_cached?'（首次結果快取）':''}\n\n🧠 邏輯分析：\n${d.logic_analysis||'無'}\n\n`+
       `💡 創意亮點：\n${d.creative_highlights||'無'}\n\n📝 講評：\n${d.comments||'無'}\n\n`+
       `📉 扣分項目：\n${d.deducted_items||'無'}`;
-    setStatus('testStatus','✅ 試評完成（提醒：試評不會儲存，學生要能自評請回⑤按「儲存設定」）','ok');
+    if(recordCalibration){
+      showCalibrationStatus(j.calibration);
+      const record=(j.calibration?.cases||{})[$('calibrationCase').value];
+      setStatus('testStatus',record?.passed?'✅ 校正結果已記錄，分數符合預期。':'⚠️ 校正結果已記錄，但分數不在期望範圍；請修正規則或樣本後重跑。',record?.passed?'ok':'err');
+    }else setStatus('testStatus','✅ 試評完成（一般試評不會列入本關校正）','ok');
   }catch(e){ setStatus('testStatus','❌ '+e.message,'err'); }
 }
 

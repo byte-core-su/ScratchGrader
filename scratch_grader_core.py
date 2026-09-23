@@ -35,6 +35,8 @@ except ImportError:
 from google import genai
 from google.genai import types
 from grading_assessment import add_assessment
+from grading_calibration import (CALIBRATION_CASES, calibration_policy_fingerprint,
+                                 score_matches_expected_range)
 from grading_policy import grading_policy_fingerprint, should_fallback_to_anthropic
 from scratch_translation import opcode_entry, project_opcode_coverage, render_official_block
 
@@ -950,6 +952,88 @@ def config_storage_status():
         }
 
 
+def _calibration_level_id(config):
+    """Use an explicit stable level ID; theme is a backward-compatible fallback."""
+    cfg = config or {}
+    return str(cfg.get("calibration_level", "")).strip() or str(cfg.get("theme", "")).strip()
+
+
+def _calibration_levels(config):
+    raw = (config or {}).get("calibration_levels_json", "{}")
+    try:
+        levels = json.loads(raw) if isinstance(raw, str) else raw
+        return levels if isinstance(levels, dict) else {}
+    except (TypeError, ValueError):
+        return {}
+
+
+def calibration_status(config):
+    """Return whether the active level has passed all four current calibration cases."""
+    cfg = config or {}
+    fallback = anthropic_fallback_status()
+    policy_hash = calibration_policy_fingerprint(
+        cfg,
+        fallback_enabled=fallback["enabled"],
+        fallback_model=fallback["model"],
+        prompt_version=os.getenv("GRADING_PROMPT_VERSION", "1"),
+    )
+    level_id = _calibration_level_id(cfg)
+    record = _calibration_levels(cfg).get(level_id, {}) if level_id else {}
+    cases = record.get("cases", {}) if isinstance(record, dict) else {}
+    current_policy = record.get("policy_hash") == policy_hash
+    passed_cases = [case for case in CALIBRATION_CASES
+                    if bool((cases.get(case) or {}).get("passed"))]
+    missing_cases = [case for case in CALIBRATION_CASES if case not in passed_cases]
+    return {
+        "required": bool(cfg.get("calibration_required", True)),
+        "level_id": level_id,
+        "ready": bool(level_id and current_policy and not missing_cases),
+        "policy_hash": policy_hash,
+        "current_policy": current_policy,
+        "passed_cases": passed_cases,
+        "missing_cases": missing_cases,
+        "cases": cases if current_policy else {},
+    }
+
+
+def record_calibration_case(config, case_name, expected_min, expected_max, result):
+    """Save one teacher-only calibration attempt for the active grading level."""
+    if case_name not in CALIBRATION_CASES:
+        raise ValueError("未知的校正樣本類型")
+    level_id = _calibration_level_id(config)
+    if not level_id:
+        raise ValueError("請先填寫關卡識別碼，再保存設定後進行校正")
+    if result.get("grading_error"):
+        raise ValueError("本次試評未完成，不能列為校正結果")
+    try:
+        expected_min, expected_max = int(expected_min), int(expected_max)
+    except (TypeError, ValueError) as e:
+        raise ValueError("期望分數範圍必須是整數") from e
+    if expected_min > expected_max:
+        raise ValueError("期望最低分不可高於最高分")
+
+    status = calibration_status(config)
+    levels = _calibration_levels(config)
+    record = levels.get(level_id, {})
+    if record.get("policy_hash") != status["policy_hash"]:
+        record = {"policy_hash": status["policy_hash"], "cases": {}}
+    cases = record.setdefault("cases", {})
+    score = result.get("score")
+    cases[case_name] = {
+        "passed": score_matches_expected_range(score, expected_min, expected_max),
+        "score": score,
+        "expected_min": expected_min,
+        "expected_max": expected_max,
+        "tested_at": _now_str(),
+        "provider": result.get("grading_provider", ""),
+        "model": result.get("grading_model", ""),
+        "fallback_used": bool(result.get("fallback_used", False)),
+    }
+    levels[level_id] = record
+    config["calibration_levels_json"] = json.dumps(levels, ensure_ascii=False, separators=(",", ":"))
+    return calibration_status(config)
+
+
 def _local_cache_read():
     if not RESULT_CACHE_PATH or not os.path.exists(RESULT_CACHE_PATH):
         return {}
@@ -1111,12 +1195,15 @@ DEFAULT_CONFIG = {
     "student_show_score": True,   # 學生自評是否顯示分數
     "student_show_achievement": True,  # 學生自評是否顯示通關成果
     "grading_policy_version": os.getenv("GRADING_POLICY_VERSION", "1").strip() or "1",  # 手動提升即可使既有結果快取失效
+    "calibration_required": _env_bool("CALIBRATION_REQUIRED", True),
+    "calibration_level": "",  # 每關穩定識別碼；換關後必須重新完成四份樣本校正
+    "calibration_levels_json": "{}",  # Firestore REST 僅存純量，使用 JSON 保存各關校正紀錄
     "admin_token": "",       # 教師端操作密碼（防止學生亂改設定）
     "updated_at": "",
 }
 
 # 對學生端隱藏的敏感欄位（前端絕不下發）
-_SENSITIVE_KEYS = ("api_key_1", "api_key_2", "admin_token")
+_SENSITIVE_KEYS = ("api_key_1", "api_key_2", "admin_token", "calibration_levels_json")
 
 
 def save_config(config, path=None):

@@ -67,7 +67,7 @@ CORS(app, resources={r"/*": {"origins": _cors_origins}},
 _flask_thread = None
 
 # 伺服器版本：用來確認 Colab 跑的是不是最新程式（開網址根目錄或 /api/health 可看到）
-SERVER_VERSION = "2026-07-18-subcol"
+SERVER_VERSION = "2026-09-23-calibration"
 
 
 # ==========================================
@@ -175,7 +175,8 @@ def teacher_get_config():
     cfg = core.load_config(CONFIG_PATH)
     return jsonify({"ok": True, "config": cfg,
                     "storage": core.config_storage_status(),
-                    "anthropic_fallback": core.anthropic_fallback_status()})
+                    "anthropic_fallback": core.anthropic_fallback_status(),
+                    "calibration": core.calibration_status(cfg)})
 
 
 @app.route("/api/teacher/config", methods=["POST"])
@@ -189,7 +190,8 @@ def teacher_save_config():
     cfg.update(incoming)
     path = core.save_config(cfg, CONFIG_PATH)
     return jsonify({"ok": True, "saved_to": path, "updated_at": cfg.get("updated_at"),
-                    "storage": _storage_status_from_save_location(path)})
+                    "storage": _storage_status_from_save_location(path),
+                    "calibration": core.calibration_status(cfg)})
 
 
 # ==========================================
@@ -276,8 +278,26 @@ def teacher_test():
         return jsonify({"ok": False, "error": "未收到檔案"}), 400
 
     cfg = core.load_config(CONFIG_PATH)
-    # 允許前端在試評時臨時覆蓋部分欄位（例如尚未存檔的規則）
+    calibration_case = request.form.get("calibration_case", "").strip()
+    expected_min = request.form.get("expected_min", "")
+    expected_max = request.form.get("expected_max", "")
+    # 允許前端在一般試評時臨時覆蓋部分欄位（例如尚未存檔的規則）。
+    # 校正結果必須對應已保存設定，否則無法保證學生實際使用同一份規則。
     overrides = request.form.get("overrides")
+    if calibration_case and overrides:
+        return jsonify({"ok": False,
+                        "error": "校正前請先儲存目前關卡設定；校正不可使用未保存的暫時設定。"}), 400
+    if calibration_case and not core.calibration_status(cfg)["level_id"]:
+        return jsonify({"ok": False,
+                        "error": "校正前請先填寫關卡識別碼並儲存設定。"}), 400
+    if calibration_case:
+        try:
+            expected_min_int, expected_max_int = int(expected_min), int(expected_max)
+            if expected_min_int > expected_max_int:
+                raise ValueError
+        except (TypeError, ValueError):
+            return jsonify({"ok": False,
+                            "error": "校正的期望分數範圍必須是有效整數，且最低分不可高於最高分。"}), 400
     if overrides:
         import json as _json
         try:
@@ -290,7 +310,15 @@ def teacher_test():
         # 校準試評必須每次重新呼叫模型，不使用學生正式成績的首次結果快取。
         result, queue_info = _run_grading_job(path, cfg, use_cache=False)
         result = core.add_assessment(result, cfg)
-        return jsonify({"ok": True, "result": result, "queue": queue_info})
+        calibration = None
+        if calibration_case:
+            calibration = core.record_calibration_case(
+                cfg, calibration_case, expected_min, expected_max, result)
+            core.save_config(cfg, CONFIG_PATH)
+        return jsonify({"ok": True, "result": result, "queue": queue_info,
+                        "calibration": calibration})
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
     except GradingQueueFull:
         return jsonify({"ok": False,
                         "error": "目前評分排隊已滿，請稍後再試。"}), 503
@@ -311,7 +339,9 @@ def teacher_test():
 @app.route("/api/student/config", methods=["GET"])
 def student_config():
     cfg = core.load_config(CONFIG_PATH)
-    return jsonify({"ok": True, "config": core.public_config(cfg)})
+    calibration = core.calibration_status(cfg)
+    return jsonify({"ok": True, "config": core.public_config(cfg),
+                    "calibration": {k: calibration[k] for k in ("required", "level_id", "ready")}})
 
 
 @app.route("/api/student/queue", methods=["GET"])
@@ -332,6 +362,11 @@ def student_grade():
         return jsonify({"ok": False, "error": "請先輸入你的學號"}), 400
 
     cfg = core.load_config(CONFIG_PATH)
+    calibration = core.calibration_status(cfg)
+    if calibration["required"] and not calibration["ready"]:
+        level = calibration["level_id"] or "目前關卡"
+        return jsonify({"ok": False,
+                        "error": f"{level} 尚未完成教師的四項試評與校正，暫時不能開始正式評分。"}), 503
     if not (cfg.get("api_key_1") or cfg.get("api_key_2")):
         return jsonify({"ok": False, "error": "老師尚未設定 API Key，暫時無法自評"}), 400
 
